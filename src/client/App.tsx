@@ -14,7 +14,8 @@ import {
   ArrowRight,
   LogOut,
   Users,
-  Eye
+  Eye,
+  RefreshCw
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -33,6 +34,7 @@ export const App: React.FC = () => {
   const [activeSession, setActiveSession] = useState<{ matchID: string; playerID: string; credentials?: string } | null>(null);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const connectingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Local/Active viewer state
   const [localActivePlayerId, setLocalActivePlayerId] = useState('0');
@@ -43,6 +45,9 @@ export const App: React.FC = () => {
   useEffect(() => {
     return () => {
       unsubscribeRef.current?.();
+      if (connectingTimeoutRef.current) {
+        clearTimeout(connectingTimeoutRef.current);
+      }
       if (clientInstance) {
         clientInstance.stop();
       }
@@ -78,6 +83,9 @@ export const App: React.FC = () => {
       try {
         const session = await roomManager.joinRoom(matchID, playerID, playerName);
         unsubscribeRef.current?.();
+        if (connectingTimeoutRef.current) {
+          clearTimeout(connectingTimeoutRef.current);
+        }
 
         const client = roomManager.createGameClient({
           matchID: session.matchID,
@@ -87,8 +95,22 @@ export const App: React.FC = () => {
         });
 
         client.start();
+
+        // 30-second safety timeout — if server never sends state, abort back to lobby
+        connectingTimeoutRef.current = setTimeout(() => {
+          console.warn('[App] Connecting timeout reached. Returning to lobby.');
+          client.stop();
+          setInGame(false);
+          setGameState(null);
+          setClientInstance(null);
+        }, 30_000);
+
         const unsubscribe = client.subscribe((state: any) => {
           if (state) {
+            if (connectingTimeoutRef.current) {
+              clearTimeout(connectingTimeoutRef.current);
+              connectingTimeoutRef.current = null;
+            }
             setGameState({ G: state.G, ctx: state.ctx });
           }
         });
@@ -109,7 +131,11 @@ export const App: React.FC = () => {
     [roomManager]
   );
 
-  const handleLeaveGame = () => {
+  const handleLeaveGame = useCallback(() => {
+    if (connectingTimeoutRef.current) {
+      clearTimeout(connectingTimeoutRef.current);
+      connectingTimeoutRef.current = null;
+    }
     unsubscribeRef.current?.();
     unsubscribeRef.current = null;
 
@@ -123,7 +149,7 @@ export const App: React.FC = () => {
     }
     setGameState(null);
     setInGame(false);
-  };
+  }, [clientInstance, activeSession, roomManager]);
 
   const handleClueDraftChange = (dir: Direction, val: string) => {
     setClueDrafts((prev) => ({
@@ -154,6 +180,39 @@ export const App: React.FC = () => {
 
     clientInstance.moves.submitClues(localActivePlayerId, drafts);
   };
+
+  if (inGame && !gameState) {
+    return (
+      <div className="app-container">
+        <header className="app-header">
+          <div className="header-brand">
+            <div className="header-logo">🍀</div>
+            <span className="header-title">So Clover!</span>
+          </div>
+          <button type="button" className="btn-secondary" onClick={handleLeaveGame}>
+            <LogOut size={16} /> Cancel
+          </button>
+        </header>
+        <div className="lobby-wrapper">
+          <div className="lobby-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }} role="status" aria-live="polite">
+            <RefreshCw
+              size={36}
+              className="spin-animation"
+              aria-label="Connecting to game server"
+              style={{ margin: '0 auto 1rem auto', color: 'var(--text-accent)', display: 'block' }}
+            />
+            <h3>Connecting to Room...</h3>
+            <p style={{ color: 'var(--text-muted)', margin: '0.5rem 0 1.5rem' }}>
+              Synchronizing match state with game server.
+            </p>
+            <button type="button" className="btn-secondary" onClick={handleLeaveGame}>
+              Back to Lobby
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!inGame || !gameState) {
     return (

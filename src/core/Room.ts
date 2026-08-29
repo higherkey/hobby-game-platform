@@ -124,6 +124,7 @@ export class BaseRoom<G extends any = any> {
 
   /**
    * Join an existing room, obtaining player credentials and persisting session.
+   * Gracefully reuses credentials if already joined to prevent 409 Conflict.
    */
   public async joinRoom(
     matchID: string,
@@ -134,20 +135,33 @@ export class BaseRoom<G extends any = any> {
       throw new Error('Lobby client is not initialized in non-browser environment.');
     }
 
-    const { playerCredentials } = await this.lobbyClient.joinMatch(this.gameName, matchID, {
-      playerID,
-      playerName
-    });
+    const saved = this.getSavedSession(matchID);
+    if (saved && saved.playerCredentials && (saved.playerID === playerID || playerID === undefined || playerID === null)) {
+      return saved;
+    }
 
-    const session: JoinedRoomSession = {
-      matchID,
-      playerID,
-      playerCredentials,
-      playerName
-    };
+    try {
+      const { playerCredentials } = await this.lobbyClient.joinMatch(this.gameName, matchID, {
+        playerID,
+        playerName
+      });
 
-    this.saveSession(session);
-    return session;
+      const session: JoinedRoomSession = {
+        matchID,
+        playerID,
+        playerCredentials,
+        playerName
+      };
+
+      this.saveSession(session);
+      return session;
+    } catch (err: any) {
+      if (saved && saved.playerCredentials) {
+        console.warn('[BaseRoom] Reusing saved credentials after join error:', err);
+        return saved;
+      }
+      throw err;
+    }
   }
 
   /**
