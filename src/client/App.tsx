@@ -6,6 +6,7 @@ import { LobbyView } from './components/LobbyView';
 import { CloverBoardView } from './components/CloverBoardView';
 import { CardTray } from './components/CardTray';
 import { ScoreView } from './components/ScoreView';
+import { AdminDashboard } from './components/AdminDashboard';
 import {
   Sparkles,
   Smartphone,
@@ -14,7 +15,9 @@ import {
   ArrowRight,
   LogOut,
   Users,
-  Eye
+  Eye,
+  RefreshCw,
+  Shield
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -26,6 +29,10 @@ export const App: React.FC = () => {
     });
   });
 
+  const [isAdminView, setIsAdminView] = useState(() => {
+    return typeof window !== 'undefined' && window.location.hash === '#admin';
+  });
+
   const [inGame, setInGame] = useState(false);
   const [isDesktopView, setIsDesktopView] = useState(false);
   const [gameState, setGameState] = useState<{ G: SoCloverGameState; ctx: any } | null>(null);
@@ -33,6 +40,16 @@ export const App: React.FC = () => {
   const [activeSession, setActiveSession] = useState<{ matchID: string; playerID: string; credentials?: string } | null>(null);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const connectingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync hash changes with admin view
+  useEffect(() => {
+    const handleHashChange = () => {
+      setIsAdminView(window.location.hash === '#admin');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Local/Active viewer state
   const [localActivePlayerId, setLocalActivePlayerId] = useState('0');
@@ -43,8 +60,15 @@ export const App: React.FC = () => {
   useEffect(() => {
     return () => {
       unsubscribeRef.current?.();
+      if (connectingTimeoutRef.current) {
+        clearTimeout(connectingTimeoutRef.current);
+      }
       if (clientInstance) {
-        clientInstance.stop();
+        try {
+          clientInstance.stop();
+        } catch (e) {
+          console.warn('[App] Client stop on unmount error:', e);
+        }
       }
     };
   }, [clientInstance]);
@@ -73,11 +97,38 @@ export const App: React.FC = () => {
     setInGame(true);
   }, [roomManager]);
 
+  const handleLeaveGame = useCallback(() => {
+    if (connectingTimeoutRef.current) {
+      clearTimeout(connectingTimeoutRef.current);
+      connectingTimeoutRef.current = null;
+    }
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = null;
+
+    if (clientInstance) {
+      try {
+        clientInstance.stop();
+      } catch (e) {
+        console.warn('[App] Client stop on leave error:', e);
+      }
+      setClientInstance(null);
+    }
+    if (activeSession) {
+      roomManager.leaveRoom(activeSession.matchID, activeSession.playerID, activeSession.credentials).catch(console.warn);
+      setActiveSession(null);
+    }
+    setGameState(null);
+    setInGame(false);
+  }, [clientInstance, activeSession, roomManager]);
+
   const handleJoinOnlineMatch = useCallback(
     async (matchID: string, playerID: string, playerName: string) => {
       try {
         const session = await roomManager.joinRoom(matchID, playerID, playerName);
         unsubscribeRef.current?.();
+        if (connectingTimeoutRef.current) {
+          clearTimeout(connectingTimeoutRef.current);
+        }
 
         const client = roomManager.createGameClient({
           matchID: session.matchID,
@@ -87,8 +138,37 @@ export const App: React.FC = () => {
         });
 
         client.start();
+
+        // Listen for room termination by admin
+        try {
+          const transportSocket = (client as any).transport?.socket;
+          if (transportSocket) {
+            transportSocket.on('match_terminated', (data: any) => {
+              if (data?.matchID === session.matchID) {
+                alert('This room has been terminated by an administrator.');
+                handleLeaveGame();
+              }
+            });
+          }
+        } catch (sockErr) {
+          console.warn('[App] Could not attach match_terminated listener:', sockErr);
+        }
+
+        // 30-second safety timeout — if server never sends state, abort back to lobby
+        connectingTimeoutRef.current = setTimeout(() => {
+          console.warn('[App] Connecting timeout reached. Returning to lobby.');
+          client.stop();
+          setInGame(false);
+          setGameState(null);
+          setClientInstance(null);
+        }, 30_000);
+
         const unsubscribe = client.subscribe((state: any) => {
           if (state) {
+            if (connectingTimeoutRef.current) {
+              clearTimeout(connectingTimeoutRef.current);
+              connectingTimeoutRef.current = null;
+            }
             setGameState({ G: state.G, ctx: state.ctx });
           }
         });
@@ -106,24 +186,8 @@ export const App: React.FC = () => {
         alert(`Failed to join online room: ${String(err)}`);
       }
     },
-    [roomManager]
+    [roomManager, handleLeaveGame]
   );
-
-  const handleLeaveGame = () => {
-    unsubscribeRef.current?.();
-    unsubscribeRef.current = null;
-
-    if (clientInstance) {
-      clientInstance.stop();
-      setClientInstance(null);
-    }
-    if (activeSession) {
-      roomManager.leaveRoom(activeSession.matchID, activeSession.playerID, activeSession.credentials).catch(console.warn);
-      setActiveSession(null);
-    }
-    setGameState(null);
-    setInGame(false);
-  };
 
   const handleClueDraftChange = (dir: Direction, val: string) => {
     setClueDrafts((prev) => ({
@@ -155,6 +219,53 @@ export const App: React.FC = () => {
     clientInstance.moves.submitClues(localActivePlayerId, drafts);
   };
 
+  // Render Admin Dashboard View
+  if (isAdminView) {
+    return (
+      <div className="app-container">
+        <AdminDashboard
+          onBackToLobby={() => {
+            window.location.hash = '';
+            setIsAdminView(false);
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (inGame && !gameState) {
+    return (
+      <div className="app-container">
+        <header className="app-header">
+          <div className="header-brand">
+            <div className="header-logo">🍀</div>
+            <span className="header-title">So Clover!</span>
+          </div>
+          <button type="button" className="btn-secondary" onClick={handleLeaveGame}>
+            <LogOut size={16} /> Cancel
+          </button>
+        </header>
+        <div className="lobby-wrapper">
+          <div className="lobby-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }} role="status" aria-live="polite">
+            <RefreshCw
+              size={36}
+              className="spin-animation"
+              aria-label="Connecting to game server"
+              style={{ margin: '0 auto 1rem auto', color: 'var(--text-accent)', display: 'block' }}
+            />
+            <h3>Connecting to Room...</h3>
+            <p style={{ color: 'var(--text-muted)', margin: '0.5rem 0 1.5rem' }}>
+              Synchronizing match state with game server.
+            </p>
+            <button type="button" className="btn-secondary" onClick={handleLeaveGame}>
+              Back to Lobby
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!inGame || !gameState) {
     return (
       <div className="app-container">
@@ -163,6 +274,16 @@ export const App: React.FC = () => {
             <div className="header-logo">🍀</div>
             <span className="header-title">So Clover! Platform</span>
           </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              window.location.hash = '#admin';
+              setIsAdminView(true);
+            }}
+          >
+            <Shield size={16} /> Admin
+          </button>
         </header>
         <LobbyView
           roomManager={roomManager}

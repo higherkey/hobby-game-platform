@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import type { BaseRoom, MatchInfo } from '../../core/Room';
-import { Users, Play, Plus, RefreshCw, Smartphone, Monitor } from 'lucide-react';
+import { Users, Play, Plus, RefreshCw, Smartphone, Monitor, LogIn } from 'lucide-react';
 
 export interface LobbyViewProps {
   roomManager: BaseRoom;
   onStartLocalGame: (numPlayers: number, playerName: string) => void;
-  onJoinOnlineMatch: (matchID: string, playerID: string, playerName: string) => void;
+  onJoinOnlineMatch: (matchID: string, playerID: string, playerName: string) => Promise<void> | void;
 }
 
 export const LobbyView: React.FC<LobbyViewProps> = ({
@@ -19,10 +19,25 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
   const [rooms, setRooms] = useState<MatchInfo[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [joiningMatchId, setJoiningMatchId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
+
     if (activeTab === 'online') {
+      const pollRooms = () => {
+        roomManager
+          .listRooms()
+          .then((list) => {
+            if (isMounted) {
+              setRooms(list);
+            }
+          })
+          .catch((e) => {
+            console.warn('[LobbyView] Failed to list rooms:', e);
+          });
+      };
+
       setIsLoadingRooms(true);
       roomManager
         .listRooms()
@@ -32,17 +47,22 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
           }
         })
         .catch((e) => {
-          console.warn('Failed to list rooms:', e);
+          console.warn('[LobbyView] Initial list rooms error:', e);
         })
         .finally(() => {
           if (isMounted) {
             setIsLoadingRooms(false);
           }
         });
+
+      // Poll available rooms dynamically every 2.5s
+      const timer = setInterval(pollRooms, 2500);
+
+      return () => {
+        isMounted = false;
+        clearInterval(timer);
+      };
     }
-    return () => {
-      isMounted = false;
-    };
   }, [activeTab, roomManager]);
 
   const fetchRooms = async () => {
@@ -51,23 +71,64 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
       const list = await roomManager.listRooms();
       setRooms(list);
     } catch (e) {
-      console.warn('Failed to list rooms:', e);
+      console.warn('[LobbyView] Failed to list rooms:', e);
     } finally {
       setIsLoadingRooms(false);
     }
   };
 
   const handleCreateOnlineRoom = async () => {
+    // Guard: prevent double-click race — isCreatingRoom blocks before createRoom API call
+    if (isCreatingRoom || joiningMatchId) return;
+
+    const trimmedName = playerName.trim().slice(0, 50);
+    if (!trimmedName) {
+      alert('Please enter your nickname before creating a room.');
+      return;
+    }
+
     setIsCreatingRoom(true);
+    let matchID: string | null = null;
     try {
-      const matchID = await roomManager.createRoom(numPlayers);
-      onJoinOnlineMatch(matchID, '0', playerName);
+      matchID = await roomManager.createRoom(numPlayers);
+      setJoiningMatchId(matchID);
+      await onJoinOnlineMatch(matchID, '0', trimmedName);
     } catch (err) {
       alert(`Could not create room on server: ${String(err)}`);
+      setJoiningMatchId(null);
     } finally {
       setIsCreatingRoom(false);
     }
   };
+
+  const handleJoinSeat = async (matchID: string, seatId: string, nameToUse?: string) => {
+    if (joiningMatchId) return;
+    const finalName = (nameToUse || playerName.trim()).slice(0, 50);
+    if (!finalName) {
+      alert('Please enter your nickname before joining.');
+      return;
+    }
+
+    setJoiningMatchId(matchID);
+    try {
+      await onJoinOnlineMatch(matchID, seatId, finalName);
+    } catch (err) {
+      alert(`Failed to join room: ${String(err)}`);
+      setJoiningMatchId(null);
+    }
+  };
+
+  // Pre-compute saved sessions once per render cycle — avoids per-card localStorage reads inside .map()
+  const savedSessionsByMatchId = React.useMemo(
+    () => {
+      const map: Record<string, ReturnType<typeof roomManager.getSavedSession>> = {};
+      for (const r of rooms) {
+        map[r.matchID] = roomManager.getSavedSession(r.matchID);
+      }
+      return map;
+    },
+    [rooms, roomManager]
+  );
 
   return (
     <div className="lobby-wrapper">
@@ -150,7 +211,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
               onClick={fetchRooms}
               disabled={isLoadingRooms}
             >
-              <RefreshCw size={14} /> Refresh
+              <RefreshCw size={14} className={isLoadingRooms ? 'spin-animation' : ''} /> Refresh
             </button>
           </div>
 
@@ -162,6 +223,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
               className="form-input"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
+              placeholder="Enter your display name"
             />
           </div>
 
@@ -174,6 +236,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
                 className="form-input"
                 value={numPlayers}
                 onChange={(e) => setNumPlayers(Number(e.target.value))}
+                disabled={isCreatingRoom || !!joiningMatchId}
               >
                 <option value={2}>2 Players</option>
                 <option value={3}>3 Players</option>
@@ -187,23 +250,29 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
               type="button"
               className="btn-primary"
               onClick={handleCreateOnlineRoom}
-              disabled={isCreatingRoom}
+              disabled={isCreatingRoom || !!joiningMatchId}
             >
-              <Plus size={18} /> Create & Join Room
+              <Plus size={18} /> {isCreatingRoom ? 'Creating Room...' : 'Create & Join Room'}
             </button>
           </div>
 
           <div className="form-group server-rooms-section">
-            <label className="form-label">Available Server Rooms</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label className="form-label">Live Server Rooms</label>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Auto-refreshes every 2.5s</span>
+            </div>
+
             {rooms.length === 0 ? (
               <div className="empty-rooms-state">
                 <Users size={32} />
-                <p>No active rooms found on the server. Create one above to get started!</p>
+                <p>No active rooms found on the server. Host one above to get started!</p>
               </div>
             ) : (
               <div className="room-grid">
                 {rooms.map((r) => {
+                  const savedSession = savedSessionsByMatchId[r.matchID];
                   const openSeat = r.players.find((p) => !p.name);
+                  const isThisRoomBusy = joiningMatchId === r.matchID;
 
                   return (
                     <div key={r.matchID} className="room-item">
@@ -215,21 +284,38 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
                       </div>
 
                       <div className="player-slots-list">
-                        {r.players.map((p) => (
-                          <span
-                            key={p.id}
-                            className={`badge ${p.name ? 'badge-green' : 'badge-yellow'}`}
-                          >
-                            Seat {Number(p.id) + 1}: {p.name || 'Empty'}
-                          </span>
-                        ))}
+                        {r.players.map((p) => {
+                          const isYou = savedSession && savedSession.playerID === p.id;
+                          return (
+                            <span
+                              key={p.id}
+                              className={`badge ${
+                                isYou ? 'badge-green' : p.name ? 'badge-green' : 'badge-yellow'
+                              }`}
+                            >
+                              Seat {Number(p.id) + 1}: {p.name ? `${p.name}${isYou ? ' (You)' : ''}` : 'Empty'}
+                            </span>
+                          );
+                        })}
                       </div>
 
-                      {openSeat ? (
+                      {savedSession ? (
                         <button
                           type="button"
                           className="btn-primary"
-                          onClick={() => onJoinOnlineMatch(r.matchID, openSeat.id, playerName)}
+                          onClick={() =>
+                            handleJoinSeat(r.matchID, savedSession.playerID, savedSession.playerName)
+                          }
+                          disabled={isThisRoomBusy || !!joiningMatchId}
+                        >
+                          <LogIn size={16} /> Rejoin Seat {Number(savedSession.playerID) + 1}
+                        </button>
+                      ) : openSeat ? (
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          onClick={() => handleJoinSeat(r.matchID, openSeat.id)}
+                          disabled={isThisRoomBusy || !!joiningMatchId}
                         >
                           Join Seat {Number(openSeat.id) + 1}
                         </button>

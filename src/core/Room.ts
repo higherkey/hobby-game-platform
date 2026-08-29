@@ -37,13 +37,18 @@ export interface JoinedRoomSession {
 }
 
 function getDefaultServerUrl(): string {
-  let url = 'http://localhost:8000';
   if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SERVER_URL) {
-    url = (import.meta as any).env.VITE_SERVER_URL;
-  } else if (typeof window !== 'undefined') {
-    url = `${window.location.protocol}//${window.location.hostname}:8000`;
+    return (import.meta as any).env.VITE_SERVER_URL.replace(/\/+$/, '');
   }
-  return url.replace(/\/+$/, '');
+  if (typeof window !== 'undefined') {
+    // In local dev (e.g. localhost or 127.0.0.1 on Vite dev server 5173), server runs on port 8000
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `${window.location.protocol}//${window.location.hostname}:8000`;
+    }
+    // In production / deployed web, server is at the same origin (no explicit :8000 port)
+    return window.location.origin;
+  }
+  return 'http://localhost:8000';
 }
 
 /**
@@ -124,6 +129,7 @@ export class BaseRoom<G extends any = any> {
 
   /**
    * Join an existing room, obtaining player credentials and persisting session.
+   * Gracefully reuses credentials if already joined to prevent 409 Conflict.
    */
   public async joinRoom(
     matchID: string,
@@ -134,20 +140,33 @@ export class BaseRoom<G extends any = any> {
       throw new Error('Lobby client is not initialized in non-browser environment.');
     }
 
-    const { playerCredentials } = await this.lobbyClient.joinMatch(this.gameName, matchID, {
-      playerID,
-      playerName
-    });
+    const saved = this.getSavedSession(matchID);
+    if (saved && saved.playerCredentials && (saved.playerID === playerID || playerID === undefined || playerID === null)) {
+      return saved;
+    }
 
-    const session: JoinedRoomSession = {
-      matchID,
-      playerID,
-      playerCredentials,
-      playerName
-    };
+    try {
+      const { playerCredentials } = await this.lobbyClient.joinMatch(this.gameName, matchID, {
+        playerID,
+        playerName
+      });
 
-    this.saveSession(session);
-    return session;
+      const session: JoinedRoomSession = {
+        matchID,
+        playerID,
+        playerCredentials,
+        playerName
+      };
+
+      this.saveSession(session);
+      return session;
+    } catch (err: any) {
+      if (saved && saved.playerCredentials) {
+        console.warn('[BaseRoom] Reusing saved credentials after join error:', err);
+        return saved;
+      }
+      throw err;
+    }
   }
 
   /**
@@ -184,7 +203,7 @@ export class BaseRoom<G extends any = any> {
         ? SocketIO({ server: this.serverUrl })
         : Local();
 
-    return Client({
+    const client = Client({
       game: this.game,
       matchID: matchID || 'default',
       playerID: playerID ?? undefined,
@@ -192,6 +211,19 @@ export class BaseRoom<G extends any = any> {
       multiplayer,
       debug
     }) as GameClientType<G>;
+
+    const originalStop = client.stop ? client.stop.bind(client) : undefined;
+    if (originalStop) {
+      client.stop = () => {
+        try {
+          originalStop();
+        } catch (err) {
+          console.warn('[BaseRoom] Handled SocketIO transport close error on stop():', err);
+        }
+      };
+    }
+
+    return client;
   }
 
   /**
@@ -232,5 +264,29 @@ export class BaseRoom<G extends any = any> {
         // ignore
       }
     }
+  }
+
+  /**
+   * Verifies if a saved session corresponds to an active match on the server.
+   * If the match is invalid or expired, clears the session and returns null.
+   */
+  public async verifySession(matchID: string): Promise<JoinedRoomSession | null> {
+    const session = this.getSavedSession(matchID);
+    if (!session) return null;
+
+    if (this.lobbyClient) {
+      try {
+        const match = await this.lobbyClient.getMatch(this.gameName, matchID);
+        if (!match) {
+          this.clearSession(matchID);
+          return null;
+        }
+      } catch (err) {
+        console.warn(`[BaseRoom] Match ${matchID} not found or expired:`, err);
+        this.clearSession(matchID);
+        return null;
+      }
+    }
+    return session;
   }
 }
