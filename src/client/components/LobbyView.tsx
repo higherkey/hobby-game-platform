@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import type { BaseRoom, MatchInfo } from '../../core/Room';
 import { Users, Play, Plus, RefreshCw, Smartphone, Monitor, LogIn } from 'lucide-react';
+import { createLogger } from '../../core/Logger';
+
+const logger = createLogger('LobbyView');
 
 export interface LobbyViewProps {
   roomManager: BaseRoom;
@@ -34,7 +37,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             }
           })
           .catch((e) => {
-            console.warn('[LobbyView] Failed to list rooms:', e);
+            logger.warn('Failed to list rooms during background poll', { error: String(e) });
           });
       };
 
@@ -47,7 +50,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
           }
         })
         .catch((e) => {
-          console.warn('[LobbyView] Initial list rooms error:', e);
+          logger.warn('Initial list rooms error', { error: String(e) });
         })
         .finally(() => {
           if (isMounted) {
@@ -71,7 +74,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
       const list = await roomManager.listRooms();
       setRooms(list);
     } catch (e) {
-      console.warn('[LobbyView] Failed to list rooms:', e);
+      logger.warn('Manual fetch rooms error', { error: String(e) });
     } finally {
       setIsLoadingRooms(false);
     }
@@ -87,13 +90,16 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
       return;
     }
 
+    logger.info(`User initiated Create Room (${numPlayers} players, creator: "${trimmedName}")`);
     setIsCreatingRoom(true);
     let matchID: string | null = null;
     try {
       matchID = await roomManager.createRoom(numPlayers);
+      logger.info(`Room created: ${matchID}. Auto-joining seat 0...`);
       setJoiningMatchId(matchID);
       await onJoinOnlineMatch(matchID, '0', trimmedName);
     } catch (err) {
+      logger.error('Failed to create online room', { error: String(err) });
       alert(`Could not create room on server: ${String(err)}`);
       setJoiningMatchId(null);
     } finally {
@@ -109,10 +115,12 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
       return;
     }
 
+    logger.info(`User joining room ${matchID} at seat ${seatId} as "${finalName}"`);
     setJoiningMatchId(matchID);
     try {
       await onJoinOnlineMatch(matchID, seatId, finalName);
     } catch (err) {
+      logger.error(`Failed to join seat ${seatId} for room ${matchID}`, { error: String(err) });
       alert(`Failed to join room: ${String(err)}`);
       setJoiningMatchId(null);
     }
@@ -257,9 +265,9 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
           </div>
 
           <div className="form-group server-rooms-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <div className="live-rooms-title-row">
               <label className="form-label">Live Server Rooms</label>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Auto-refreshes every 2.5s</span>
+              <span className="auto-refresh-text">Auto-refreshes every 2.5s</span>
             </div>
 
             {rooms.length === 0 ? (

@@ -3,6 +3,7 @@ import { Client } from 'boardgame.io/client';
 import { SocketIO, Local } from 'boardgame.io/multiplayer';
 import type { Game } from 'boardgame.io';
 import type { BaseGame } from './Game';
+import { createLogger } from './Logger';
 
 export type GameClientType<G extends any = any> = ReturnType<typeof Client<G>>;
 
@@ -61,6 +62,7 @@ export class BaseRoom<G extends any = any> {
   public readonly gameName: string;
   private storageKeyPrefix = 'bgio_room_session_';
   private memorySessions: Map<string, JoinedRoomSession> = new Map();
+  private logger = createLogger('BaseRoom');
 
   constructor(config: RoomConfig) {
     this.serverUrl = (config.serverUrl || getDefaultServerUrl()).replace(/\/+$/, '');
@@ -93,8 +95,9 @@ export class BaseRoom<G extends any = any> {
   public async listRooms(): Promise<MatchInfo[]> {
     if (!this.lobbyClient) return [];
     try {
+      this.logger.debug(`Fetching room list for game: ${this.gameName}`);
       const response = await this.lobbyClient.listMatches(this.gameName);
-      return response.matches.map((m: any) => ({
+      const matches: MatchInfo[] = response.matches.map((m: any) => ({
         matchID: m.matchID,
         gameName: m.gameName,
         players: m.players.map((p: any) => ({
@@ -107,8 +110,10 @@ export class BaseRoom<G extends any = any> {
         updatedAt: m.updatedAt,
         gameover: m.gameover
       }));
+      this.logger.debug(`Received ${matches.length} active room(s) from lobby`);
+      return matches;
     } catch (err) {
-      console.warn('[BaseRoom] Could not fetch rooms from lobby server:', err);
+      this.logger.warn('Could not fetch rooms from lobby server', { error: String(err) });
       return [];
     }
   }
@@ -120,10 +125,12 @@ export class BaseRoom<G extends any = any> {
     if (!this.lobbyClient) {
       throw new Error('Lobby client is not initialized in non-browser environment.');
     }
+    this.logger.info(`Creating room for ${numPlayers} players on ${this.serverUrl}...`);
     const result = await this.lobbyClient.createMatch(this.gameName, {
       numPlayers,
       setupData
     });
+    this.logger.info(`Room created successfully`, { matchID: result.matchID, numPlayers });
     return result.matchID;
   }
 
@@ -142,10 +149,12 @@ export class BaseRoom<G extends any = any> {
 
     const saved = this.getSavedSession(matchID);
     if (saved && saved.playerCredentials && (saved.playerID === playerID || playerID === undefined || playerID === null)) {
+      this.logger.info(`Reusing saved credentials for room ${matchID}`, { playerID: saved.playerID, playerName });
       return saved;
     }
 
     try {
+      this.logger.info(`Sending join request for room ${matchID}`, { playerID, playerName });
       const { playerCredentials } = await this.lobbyClient.joinMatch(this.gameName, matchID, {
         playerID,
         playerName
@@ -159,12 +168,14 @@ export class BaseRoom<G extends any = any> {
       };
 
       this.saveSession(session);
+      this.logger.info(`Joined room successfully`, { matchID, playerID });
       return session;
     } catch (err: any) {
       if (saved && saved.playerCredentials) {
-        console.warn('[BaseRoom] Reusing saved credentials after join error:', err);
+        this.logger.warn(`Join error; falling back to saved session credentials`, { matchID, error: String(err) });
         return saved;
       }
+      this.logger.error(`Failed to join room ${matchID}`, { error: String(err), playerID });
       throw err;
     }
   }
@@ -173,6 +184,7 @@ export class BaseRoom<G extends any = any> {
    * Leave a match and clear session.
    */
   public async leaveRoom(matchID: string, playerID: string, credentials?: string): Promise<void> {
+    this.logger.info(`Leaving room ${matchID}`, { playerID });
     if (this.lobbyClient && credentials) {
       try {
         await this.lobbyClient.leaveMatch(this.gameName, matchID, {
@@ -180,7 +192,7 @@ export class BaseRoom<G extends any = any> {
           credentials
         });
       } catch (e) {
-        console.warn('[BaseRoom] Error leaving match:', e);
+        this.logger.warn('Error sending leaveMatch request to server', { error: String(e) });
       }
     }
     this.clearSession(matchID);
@@ -197,6 +209,12 @@ export class BaseRoom<G extends any = any> {
     debug?: boolean;
   }): GameClientType<G> {
     const { matchID, playerID, credentials, multiplayerType = 'socket', debug = false } = options;
+
+    this.logger.info(`Creating game client for match ${matchID || 'default'}`, {
+      playerID,
+      multiplayerType,
+      serverUrl: this.serverUrl
+    });
 
     const multiplayer =
       multiplayerType === 'socket' && this.serverUrl
@@ -218,7 +236,7 @@ export class BaseRoom<G extends any = any> {
         try {
           originalStop();
         } catch (err) {
-          console.warn('[BaseRoom] Handled SocketIO transport close error on stop():', err);
+          this.logger.warn('Handled SocketIO transport close error on stop()', { error: String(err) });
         }
       };
     }
