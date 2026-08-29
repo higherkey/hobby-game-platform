@@ -1,22 +1,26 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@core': path.resolve(__dirname, './src/core'),
-      '@games': path.resolve(__dirname, './src/games'),
-      '@client': path.resolve(__dirname, './src/client')
+      '@core': fileURLToPath(new URL('./src/core', import.meta.url)),
+      '@games': fileURLToPath(new URL('./src/games', import.meta.url)),
+      '@client': fileURLToPath(new URL('./src/client', import.meta.url))
     }
   },
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          engine: ['boardgame.io']
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor';
+          }
+          if (id.includes('node_modules/boardgame.io')) {
+            return 'engine';
+          }
         }
       }
     }
