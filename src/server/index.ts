@@ -5,7 +5,6 @@ import { CounterGame } from '../core/example';
 import { PostgresStore } from './db/PostgresStore';
 import { recordCompletedGame, getGameHistory } from './gameRecordsHook';
 import { registerAdminRoutes } from './adminRoutes';
-import serve from 'koa-static';
 import send from 'koa-send';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -92,31 +91,33 @@ if (server.router) {
     games: normalizedGames,
     serverTransport: transport
   });
-}
 
-// Synchronously attach static production frontend serving if dist directory exists
-const distPath = path.resolve(process.cwd(), 'dist');
-if (fs.existsSync(distPath) && server.app) {
-  console.log(`[Server] Mounting static production frontend from ${distPath}`);
-  server.app.use(serve(distPath));
+  // Direct router routes for production frontend
+  const distPath = path.resolve(process.cwd(), 'dist');
+  if (fs.existsSync(distPath)) {
+    console.log(`[Server] Mounting static production frontend from ${distPath}`);
+    const indexHtmlPath = path.join(distPath, 'index.html');
 
-  // SPA fallback: Route non-API, non-WebSocket unhandled GET requests to index.html
-  server.app.use(async (ctx, next) => {
-    await next();
-    if (
-      ctx.status === 404 &&
-      ctx.method === 'GET' &&
-      !ctx.body &&
-      !ctx.path.startsWith('/api') &&
-      !ctx.path.startsWith('/games') &&
-      !ctx.path.startsWith('/health') &&
-      !ctx.path.startsWith('/socket.io')
-    ) {
-      await send(ctx, 'index.html', { root: distPath });
-    }
-  });
-} else {
-  console.log('[Server] No dist/ directory found. Static frontend serving is inactive.');
+    server.router.get('/', async (ctx) => {
+      ctx.type = 'text/html; charset=utf-8';
+      ctx.body = fs.createReadStream(indexHtmlPath);
+    });
+
+    server.router.get('/assets/(.*)', async (ctx) => {
+      await send(ctx, ctx.path, { root: distPath });
+    });
+
+    server.router.get('/favicon.ico', async (ctx) => {
+      const fav = path.join(distPath, 'favicon.ico');
+      if (fs.existsSync(fav)) {
+        await send(ctx, 'favicon.ico', { root: distPath });
+      } else {
+        ctx.status = 204;
+      }
+    });
+  } else {
+    console.log('[Server] No dist/ directory found. Static frontend serving is inactive.');
+  }
 }
 
 // Background cleanup job: runs every 15 minutes to prune inactive rooms
