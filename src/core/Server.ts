@@ -1,4 +1,4 @@
-import { Server, Origins } from 'boardgame.io/server';
+import { Server, Origins, SocketIO } from 'boardgame.io/server';
 import type { Game } from 'boardgame.io';
 import type { BaseGame } from './Game';
 
@@ -20,9 +20,29 @@ export class BaseServer {
         : (g as Game<any, any>)
     );
 
+    const transport = new SocketIO({
+      socketOpts: {
+        cors: {
+          origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+            if (!origin) return callback(null, true);
+            const isAllowed = origins.some((allowed) => {
+              if (allowed === '*' || allowed === true) return true;
+              if (typeof allowed === 'string') return origin === allowed;
+              if (allowed instanceof RegExp) return allowed.test(origin);
+              return false;
+            });
+            return callback(null, isAllowed);
+          },
+          credentials: true,
+          methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+        }
+      } as any
+    });
+
     const server = Server({
       games: normalizedGames as any,
-      origins
+      origins,
+      transport
     });
 
     if (server.router) {

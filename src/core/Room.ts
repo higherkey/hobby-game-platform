@@ -37,13 +37,13 @@ export interface JoinedRoomSession {
 }
 
 function getDefaultServerUrl(): string {
+  let url = 'http://localhost:8000';
   if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SERVER_URL) {
-    return (import.meta as any).env.VITE_SERVER_URL;
+    url = (import.meta as any).env.VITE_SERVER_URL;
+  } else if (typeof window !== 'undefined') {
+    url = `${window.location.protocol}//${window.location.hostname}:8000`;
   }
-  if (typeof window !== 'undefined') {
-    return `${window.location.protocol}//${window.location.hostname}:8000`;
-  }
-  return 'http://localhost:8000';
+  return url.replace(/\/+$/, '');
 }
 
 /**
@@ -58,7 +58,7 @@ export class BaseRoom<G extends any = any> {
   private memorySessions: Map<string, JoinedRoomSession> = new Map();
 
   constructor(config: RoomConfig) {
-    this.serverUrl = config.serverUrl || getDefaultServerUrl();
+    this.serverUrl = (config.serverUrl || getDefaultServerUrl()).replace(/\/+$/, '');
     this.gameName = config.gameName;
 
     if ('toBoardgameConfig' in config.game && typeof config.game.toBoardgameConfig === 'function') {
@@ -76,7 +76,7 @@ export class BaseRoom<G extends any = any> {
    * Set custom server URL for Lobby Client
    */
   public setServerUrl(url: string): void {
-    this.serverUrl = url;
+    this.serverUrl = url.replace(/\/+$/, '');
     if (typeof window !== 'undefined') {
       this.lobbyClient = new LobbyClient({ server: this.serverUrl });
     }

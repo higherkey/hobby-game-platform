@@ -10,11 +10,7 @@ const counterGame = new CounterGame();
 
 const allowedOrigins: (string | RegExp | boolean)[] = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim())
-  : [Origins.LOCALHOST, Origins.LOCALHOST_IN_DEVELOPMENT, /\.vercel\.app$/];
-
-if (process.env.NODE_ENV !== 'production') {
-  allowedOrigins.push('*');
-}
+  : ['*', Origins.LOCALHOST, Origins.LOCALHOST_IN_DEVELOPMENT, /\.vercel\.app$/];
 
 // Create and start boardgame.io multiplayer server for all platform games
 const { run } = BaseServer.createServer([cloverGame, counterGame], {
