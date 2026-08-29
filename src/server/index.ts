@@ -90,6 +90,37 @@ if (server.router) {
   });
 }
 
+// Serve static production frontend build if dist directory exists
+import('node:path').then((path) => {
+  import('node:fs').then((fs) => {
+    import('koa-static').then(({ default: serve }) => {
+      import('koa-send').then(({ default: send }) => {
+        const distPath = path.resolve(process.cwd(), 'dist');
+        if (fs.existsSync(distPath) && server.app) {
+          console.log(`[Server] Serving static production frontend from ${distPath}`);
+          server.app.use(serve(distPath));
+
+          // SPA fallback for client-side routing
+          server.app.use(async (ctx, next) => {
+            if (
+              ctx.status === 404 &&
+              ctx.method === 'GET' &&
+              !ctx.path.startsWith('/api') &&
+              !ctx.path.startsWith('/games') &&
+              !ctx.path.startsWith('/health') &&
+              !ctx.path.startsWith('/socket.io')
+            ) {
+              await send(ctx, 'index.html', { root: distPath });
+            } else {
+              await next();
+            }
+          });
+        }
+      });
+    });
+  });
+});
+
 // Background cleanup job: runs every 15 minutes to prune inactive rooms
 let cleanupTimer: NodeJS.Timeout | undefined;
 

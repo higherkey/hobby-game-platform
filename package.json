@@ -15,6 +15,8 @@
   "dependencies": {
     "boardgame.io": "^0.50.2",
     "clsx": "^2.1.1",
+    "koa-send": "^5.0.1",
+    "koa-static": "^5.0.0",
     "lucide-react": "^1.16.0",
     "pg": "^8.23.0",
     "react": "^18.3.1",
@@ -22,6 +24,8 @@
     "tsx": "^4.19.0"
   },
   "devDependencies": {
+    "@types/koa-send": "^4.1.6",
+    "@types/koa-static": "^4.0.4",
     "@types/node": "^22.5.4",
     "@types/pg": "^8.23.1",
     "@types/react": "^18.3.5",
