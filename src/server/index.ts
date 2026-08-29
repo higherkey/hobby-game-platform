@@ -5,6 +5,7 @@ import { CounterGame } from '../core/example';
 import { PostgresStore } from './db/PostgresStore';
 import { recordCompletedGame, getGameHistory } from './gameRecordsHook';
 import { registerAdminRoutes } from './adminRoutes';
+import { registerTelemetryRoutes, recordServerLog } from './telemetryRoutes';
 import send from 'koa-send';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -41,6 +42,24 @@ const { server, transport, normalizedGames, run } = BaseServer.createServer([clo
   origins: allowedOrigins,
   db
 });
+
+// Request tracing middleware
+if (server.app) {
+  server.app.use(async (ctx, next) => {
+    const start = Date.now();
+    await next();
+    const duration = Date.now() - start;
+    if (ctx.path.startsWith('/api') || ctx.path.startsWith('/games') || ctx.path.startsWith('/health')) {
+      const msg = `${ctx.method} ${ctx.path} -> ${ctx.status} (${duration}ms)`;
+      recordServerLog(ctx.status >= 400 ? 'WARN' : 'INFO', 'HTTP', msg, {
+        method: ctx.method,
+        path: ctx.path,
+        status: ctx.status,
+        durationMs: duration
+      });
+    }
+  });
+}
 
 // Register history API endpoint
 if (server.router) {
@@ -84,13 +103,14 @@ if (server.router) {
     }
   });
 
-  // Register Admin API routes
+  // Register Admin & Telemetry API routes
   registerAdminRoutes({
     router: server.router,
     db,
     games: normalizedGames,
     serverTransport: transport
   });
+  registerTelemetryRoutes(server.router);
 
   // Direct router routes for production frontend
   const distPath = path.resolve(process.cwd(), 'dist');
