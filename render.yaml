@@ -8,5 +8,13 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 8000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hobby-game-db
+          property: connectionString
+
+databases:
+  - name: hobby-game-db
+    databaseName: hobby_games
+    user: hobby_user
+    plan: free
