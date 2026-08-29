@@ -5,6 +5,10 @@ import { CounterGame } from '../core/example';
 import { PostgresStore } from './db/PostgresStore';
 import { recordCompletedGame, getGameHistory } from './gameRecordsHook';
 import { registerAdminRoutes } from './adminRoutes';
+import serve from 'koa-static';
+import send from 'koa-send';
+import path from 'node:path';
+import fs from 'node:fs';
 
 const PORT = Number(process.env.PORT) || 8000;
 
@@ -90,36 +94,30 @@ if (server.router) {
   });
 }
 
-// Serve static production frontend build if dist directory exists
-import('node:path').then((path) => {
-  import('node:fs').then((fs) => {
-    import('koa-static').then(({ default: serve }) => {
-      import('koa-send').then(({ default: send }) => {
-        const distPath = path.resolve(process.cwd(), 'dist');
-        if (fs.existsSync(distPath) && server.app) {
-          console.log(`[Server] Serving static production frontend from ${distPath}`);
-          server.app.use(serve(distPath));
+// Synchronously attach static production frontend serving if dist directory exists
+const distPath = path.resolve(process.cwd(), 'dist');
+if (fs.existsSync(distPath) && server.app) {
+  console.log(`[Server] Mounting static production frontend from ${distPath}`);
+  server.app.use(serve(distPath));
 
-          // SPA fallback for client-side routing
-          server.app.use(async (ctx, next) => {
-            if (
-              ctx.status === 404 &&
-              ctx.method === 'GET' &&
-              !ctx.path.startsWith('/api') &&
-              !ctx.path.startsWith('/games') &&
-              !ctx.path.startsWith('/health') &&
-              !ctx.path.startsWith('/socket.io')
-            ) {
-              await send(ctx, 'index.html', { root: distPath });
-            } else {
-              await next();
-            }
-          });
-        }
-      });
-    });
+  // SPA fallback: Route non-API, non-WebSocket unhandled GET requests to index.html
+  server.app.use(async (ctx, next) => {
+    await next();
+    if (
+      ctx.status === 404 &&
+      ctx.method === 'GET' &&
+      !ctx.body &&
+      !ctx.path.startsWith('/api') &&
+      !ctx.path.startsWith('/games') &&
+      !ctx.path.startsWith('/health') &&
+      !ctx.path.startsWith('/socket.io')
+    ) {
+      await send(ctx, 'index.html', { root: distPath });
+    }
   });
-});
+} else {
+  console.log('[Server] No dist/ directory found. Static frontend serving is inactive.');
+}
 
 // Background cleanup job: runs every 15 minutes to prune inactive rooms
 let cleanupTimer: NodeJS.Timeout | undefined;
