@@ -16,7 +16,7 @@ const counterGame = new CounterGame();
 
 const allowedOrigins: (string | RegExp | boolean)[] = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim())
-  : ['*', Origins.LOCALHOST, Origins.LOCALHOST_IN_DEVELOPMENT, /\.vercel\.app$/];
+  : ['*', Origins.LOCALHOST, Origins.LOCALHOST_IN_DEVELOPMENT];
 
 let db: PostgresStore | undefined;
 
