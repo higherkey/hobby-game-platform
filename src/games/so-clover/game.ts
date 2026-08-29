@@ -186,6 +186,7 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
         currentSlots: [null, null, null, null],
         lockedSlots: [false, false, false, false],
         cardPool: [],
+        readyVotes: [],
         attemptNumber: 1,
         score: 0,
         isResolved: false
@@ -248,6 +249,7 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
           p.cardPool = shuffledPool;
           p.currentSlots = [null, null, null, null];
           p.lockedSlots = [false, false, false, false];
+          p.readyVotes = [];
           p.attemptNumber = 1;
         }
       }
@@ -267,13 +269,16 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       const board = G.players[spectatorId];
       if (!board || board.isResolved) return INVALID_MOVE;
 
-      // Authorization guard: The active spectator whose board is being guessed cannot place cards
-      if (playerID !== undefined && playerID === spectatorId) {
+      // Authorization guard: The active spectator whose board is being guessed cannot place cards (unless solo)
+      if (G.playerOrder.length > 1 && playerID !== undefined && playerID === spectatorId) {
         return INVALID_MOVE;
       }
 
       if (slotIndex < 0 || slotIndex > 3 || !Number.isInteger(slotIndex)) return INVALID_MOVE;
       if (board.lockedSlots[slotIndex]) return INVALID_MOVE;
+
+      // Reset consensus votes on board modification
+      board.readyVotes = [];
 
       // Find card in pool or existing slot
       const poolIndex = board.cardPool.findIndex((item) => item.card.id === cardId);
@@ -312,13 +317,16 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       const board = G.players[spectatorId];
       if (!board || board.isResolved) return INVALID_MOVE;
 
-      // Authorization guard: Spectator cannot manipulate slots
-      if (playerID !== undefined && playerID === spectatorId) {
+      // Authorization guard: Spectator cannot manipulate slots (unless solo)
+      if (G.playerOrder.length > 1 && playerID !== undefined && playerID === spectatorId) {
         return INVALID_MOVE;
       }
 
       if (slotIndex < 0 || slotIndex > 3 || !Number.isInteger(slotIndex)) return INVALID_MOVE;
       if (board.lockedSlots[slotIndex]) return INVALID_MOVE;
+
+      // Reset consensus votes on board modification
+      board.readyVotes = [];
 
       const placed = board.currentSlots[slotIndex];
       if (!placed) return;
@@ -340,13 +348,16 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       const board = G.players[spectatorId];
       if (!board || board.isResolved) return INVALID_MOVE;
 
-      // Authorization guard: Spectator cannot manipulate slots
-      if (playerID !== undefined && playerID === spectatorId) {
+      // Authorization guard: Spectator cannot manipulate slots (unless solo)
+      if (G.playerOrder.length > 1 && playerID !== undefined && playerID === spectatorId) {
         return INVALID_MOVE;
       }
 
       if (slotIndex < 0 || slotIndex > 3 || !Number.isInteger(slotIndex)) return INVALID_MOVE;
       if (board.lockedSlots[slotIndex]) return INVALID_MOVE;
+
+      // Reset consensus votes on rotation
+      board.readyVotes = [];
 
       const placed = board.currentSlots[slotIndex];
       if (placed) {
@@ -363,10 +374,13 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       const board = G.players[spectatorId];
       if (!board || board.isResolved) return INVALID_MOVE;
 
-      // Authorization guard: Spectator cannot manipulate pool
-      if (playerID !== undefined && playerID === spectatorId) {
+      // Authorization guard: Spectator cannot manipulate pool (unless solo)
+      if (G.playerOrder.length > 1 && playerID !== undefined && playerID === spectatorId) {
         return INVALID_MOVE;
       }
+
+      // Reset consensus votes on rotation
+      board.readyVotes = [];
 
       const poolItem = board.cardPool.find((p) => p.card.id === cardId);
       if (poolItem) {
@@ -374,15 +388,70 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       }
     },
 
-    submitGuess: ({ G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string }) => {
+    toggleReadyVote: (
+      { G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
+      playerId?: string
+    ) => {
       if (G.phase !== 'resolution') return INVALID_MOVE;
       const spectatorId = G.playerOrder[G.currentSpectatorIndex];
       const board = G.players[spectatorId];
       if (!board || board.isResolved) return INVALID_MOVE;
 
-      // Authorization guard: Spectator cannot submit guess on their own board
-      if (playerID !== undefined && playerID === spectatorId) {
+      const voterId = playerID !== undefined ? playerID : (playerId || '');
+      if (!voterId) return INVALID_MOVE;
+
+      // Spectator cannot vote on their own board in multiplayer
+      if (G.playerOrder.length > 1 && voterId === spectatorId) {
         return INVALID_MOVE;
+      }
+
+      if (!board.readyVotes) {
+        board.readyVotes = [];
+      }
+
+      if (board.readyVotes.includes(voterId)) {
+        board.readyVotes = board.readyVotes.filter((id) => id !== voterId);
+      } else {
+        board.readyVotes.push(voterId);
+      }
+    },
+
+    submitGuess: (
+      { G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
+      isOverrule: boolean = false
+    ) => {
+      if (G.phase !== 'resolution') return INVALID_MOVE;
+      const spectatorId = G.playerOrder[G.currentSpectatorIndex];
+      const board = G.players[spectatorId];
+      if (!board || board.isResolved) return INVALID_MOVE;
+
+      const numPlayers = G.playerOrder.length;
+
+      // Authorization guard: In multiplayer, spectator cannot submit guess on their own board
+      if (numPlayers > 1 && playerID !== undefined && playerID === spectatorId) {
+        return INVALID_MOVE;
+      }
+
+      // Lead guesser is seated immediately to the left of the spectator
+      const leadGuesserId = numPlayers > 1
+        ? G.playerOrder[(G.currentSpectatorIndex + 1) % numPlayers]
+        : spectatorId;
+
+      // For 3+ players: enforce Lead Guesser identity and unanimous consensus (unless overrule)
+      if (numPlayers >= 3) {
+        if (playerID !== undefined && playerID !== leadGuesserId) {
+          return INVALID_MOVE;
+        }
+        const guesserCount = numPlayers - 1;
+        const isUnanimous = (board.readyVotes || []).length >= guesserCount;
+        if (!isUnanimous && !isOverrule) {
+          return INVALID_MOVE;
+        }
+      } else if (numPlayers === 2) {
+        // For 2 players: single guesser is lead guesser
+        if (playerID !== undefined && playerID !== leadGuesserId) {
+          return INVALID_MOVE;
+        }
       }
 
       // Check if all 4 slots are filled
@@ -400,6 +469,9 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       });
 
       const correctCount = slotCorrectness.filter(Boolean).length;
+
+      // Reset ready votes on guess submission
+      board.readyVotes = [];
 
       if (board.attemptNumber === 1) {
         board.attempt1CorrectCount = correctCount;
@@ -425,6 +497,7 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
             }
           });
           board.attemptNumber = 2;
+          board.readyVotes = [];
         }
       } else if (board.attemptNumber === 2) {
         board.attempt2CorrectCount = correctCount;

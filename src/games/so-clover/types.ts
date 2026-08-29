@@ -50,6 +50,9 @@ export interface PlayerBoard {
     rotation: number;
   }[];
 
+  // Consensus ready votes by guessers during resolution
+  readyVotes: string[];
+
   // Resolution outcome
   attemptNumber: 1 | 2;
   attempt1CorrectCount?: number;
