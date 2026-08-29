@@ -190,4 +190,119 @@ describe('So Clover Game Engine', () => {
     expect(game.moves.placeCard({ G, ctx, playerID: '1' }, 0, cardId, 0)).toBe(INVALID_MOVE);
     expect(game.moves.removeCard({ G, ctx, playerID: '1' }, 0)).toBe(INVALID_MOVE);
   });
+
+  describe('Unanimous Consensus & Lead Guesser Overrule Mechanics', () => {
+    it('handles consensus voting, vote toggling, and resets on card manipulations in 3-player game', () => {
+      const game = new SoCloverGame();
+      const ctx = { numPlayers: 3, currentPlayer: '1', turn: 1 } as unknown as Ctx;
+      const G = game.setup(ctx);
+
+      game.moves.submitClues({ G, ctx, playerID: '0' }, '0', { north: 'A', east: 'B', south: 'C', west: 'D' });
+      game.moves.submitClues({ G, ctx, playerID: '1' }, '1', { north: 'E', east: 'F', south: 'G', west: 'H' });
+      game.moves.submitClues({ G, ctx, playerID: '2' }, '2', { north: 'I', east: 'J', south: 'K', west: 'L' });
+
+      // Spectator is 0. Lead Guesser is (0 + 1) % 3 = 1. Guessers are 1 and 2.
+      const board0 = G.players['0'];
+
+      // Spectator 0 cannot vote
+      expect(game.moves.toggleReadyVote({ G, ctx, playerID: '0' })).toBe(INVALID_MOVE);
+
+      // Guesser 1 votes ready
+      game.moves.toggleReadyVote({ G, ctx, playerID: '1' });
+      expect(board0.readyVotes).toEqual(['1']);
+
+      // Guesser 1 toggles off
+      game.moves.toggleReadyVote({ G, ctx, playerID: '1' });
+      expect(board0.readyVotes).toEqual([]);
+
+      // Both guessers vote ready
+      game.moves.toggleReadyVote({ G, ctx, playerID: '1' });
+      game.moves.toggleReadyVote({ G, ctx, playerID: '2' });
+      expect(board0.readyVotes).toEqual(['1', '2']);
+
+      // Guesser 2 places a card -> readyVotes MUST auto-reset to empty
+      const cardToPlace = board0.cardPool[0].card.id;
+      game.moves.placeCard({ G, ctx, playerID: '2' }, 0, cardToPlace, 0);
+      expect(board0.readyVotes).toEqual([]);
+
+      // Guessers re-vote ready
+      game.moves.toggleReadyVote({ G, ctx, playerID: '1' });
+      game.moves.toggleReadyVote({ G, ctx, playerID: '2' });
+      expect(board0.readyVotes).toEqual(['1', '2']);
+
+      // Rotating a placed slot card resets readyVotes
+      game.moves.rotateSlotCard({ G, ctx, playerID: '2' }, 0);
+      expect(board0.readyVotes).toEqual([]);
+
+      // Re-vote ready
+      game.moves.toggleReadyVote({ G, ctx, playerID: '1' });
+      expect(board0.readyVotes).toEqual(['1']);
+
+      // Rotating a pool card resets readyVotes
+      const poolCardId = board0.cardPool[0].card.id;
+      game.moves.rotatePoolCard({ G, ctx, playerID: '2' }, poolCardId);
+      expect(board0.readyVotes).toEqual([]);
+
+      // Re-vote ready
+      game.moves.toggleReadyVote({ G, ctx, playerID: '1' });
+      expect(board0.readyVotes).toEqual(['1']);
+
+      // Removing a card resets readyVotes
+      game.moves.removeCard({ G, ctx, playerID: '2' }, 0);
+      expect(board0.readyVotes).toEqual([]);
+    });
+
+    it('requires unanimous consensus for regular submitGuess in 3-player game, but permits gated Overrule by Lead Guesser', () => {
+      const game = new SoCloverGame();
+      const ctx = { numPlayers: 3, currentPlayer: '1', turn: 1 } as unknown as Ctx;
+      const G = game.setup(ctx);
+
+      game.moves.submitClues({ G, ctx, playerID: '0' }, '0', { north: 'A', east: 'B', south: 'C', west: 'D' });
+      game.moves.submitClues({ G, ctx, playerID: '1' }, '1', { north: 'E', east: 'F', south: 'G', west: 'H' });
+      game.moves.submitClues({ G, ctx, playerID: '2' }, '2', { north: 'I', east: 'J', south: 'K', west: 'L' });
+
+      const board0 = G.players['0'];
+      // Place 4 cards into slots
+      for (let s = 0; s < 4; s++) {
+        const sol = board0.secretSolution[s];
+        game.moves.placeCard({ G, ctx, playerID: '1' }, s, sol.cardId, sol.rotation);
+      }
+
+      // Non-lead guesser (Player 2) tries to submit -> REJECTED
+      expect(game.moves.submitGuess({ G, ctx, playerID: '2' })).toBe(INVALID_MOVE);
+
+      // Lead guesser (Player 1) tries to submit without consensus -> REJECTED
+      expect(game.moves.submitGuess({ G, ctx, playerID: '1' })).toBe(INVALID_MOVE);
+
+      // Lead guesser invokes gated Overrule -> SUCCEEDS even without unanimous votes
+      const overruleResult = game.moves.submitGuess({ G, ctx, playerID: '1' }, true);
+      expect(overruleResult).not.toBe(INVALID_MOVE);
+      expect(board0.isResolved).toBe(true);
+      expect(board0.score).toBe(6);
+    });
+
+    it('allows Lead Guesser to submit when all guessers vote ready', () => {
+      const game = new SoCloverGame();
+      const ctx = { numPlayers: 3, currentPlayer: '1', turn: 1 } as unknown as Ctx;
+      const G = game.setup(ctx);
+
+      game.moves.submitClues({ G, ctx, playerID: '0' }, '0', { north: 'A', east: 'B', south: 'C', west: 'D' });
+      game.moves.submitClues({ G, ctx, playerID: '1' }, '1', { north: 'E', east: 'F', south: 'G', west: 'H' });
+      game.moves.submitClues({ G, ctx, playerID: '2' }, '2', { north: 'I', east: 'J', south: 'K', west: 'L' });
+
+      const board0 = G.players['0'];
+      for (let s = 0; s < 4; s++) {
+        const sol = board0.secretSolution[s];
+        game.moves.placeCard({ G, ctx, playerID: '1' }, s, sol.cardId, sol.rotation);
+      }
+
+      // Both guessers vote ready
+      game.moves.toggleReadyVote({ G, ctx, playerID: '1' });
+      game.moves.toggleReadyVote({ G, ctx, playerID: '2' });
+
+      // Lead Guesser submits normally
+      expect(game.moves.submitGuess({ G, ctx, playerID: '1' }, false)).not.toBe(INVALID_MOVE);
+      expect(board0.isResolved).toBe(true);
+    });
+  });
 });

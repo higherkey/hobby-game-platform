@@ -24,6 +24,7 @@ export const KeywordCardView: React.FC<KeywordCardViewProps> = ({
     <div
       className={clsx('keyword-card', rotClass, isSelected && 'selected', className)}
       onClick={onClick}
+      onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -32,7 +33,7 @@ export const KeywordCardView: React.FC<KeywordCardViewProps> = ({
       }}
       role="button"
       tabIndex={0}
-      aria-label={`Keyword card with words: Top ${card.words[0]}, Right ${card.words[1]}, Bottom ${card.words[2]}, Left ${card.words[3]}, rotated ${normRotation * 90} degrees`}
+      aria-label={`Keyword card: Top "${card.words[0]}", Right "${card.words[1]}", Bottom "${card.words[2]}", Left "${card.words[3]}", rotated ${normRotation * 90} degrees`}
       aria-pressed={isSelected}
     >
       <div className="keyword-card-center-hole" aria-hidden="true" />
