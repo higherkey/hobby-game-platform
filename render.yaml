@@ -3,6 +3,7 @@ services:
     name: hobby-game-server
     env: node
     plan: free
+    healthCheckPath: /health
     buildCommand: npm install
     startCommand: npm run server
     envVars:

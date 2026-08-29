@@ -25,6 +25,15 @@ export class BaseServer {
       origins
     });
 
+    if (server.router) {
+      server.router.get('/health', (ctx) => {
+        ctx.status = 200;
+        ctx.body = { status: 'ok', timestamp: Date.now() };
+      });
+    } else {
+      console.warn('[BoardGame Server] server.router not found; /health route was not registered.');
+    }
+
     return {
       server,
       run: () => {
