@@ -4,7 +4,7 @@ services:
     env: node
     plan: free
     healthCheckPath: /health
-    buildCommand: npm install
+    buildCommand: npm ci && npm run build
     startCommand: npm run server
     envVars:
       - key: NODE_ENV
@@ -13,6 +13,8 @@ services:
         fromDatabase:
           name: hobby-game-db
           property: connectionString
+      - key: ADMIN_SECRET
+        generateValue: true
 
 databases:
   - name: hobby-game-db

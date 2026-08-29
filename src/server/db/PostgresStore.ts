@@ -347,6 +347,84 @@ export class PostgresStore {
   }
 
   /**
+   * Cleans up stale matches that exceeded inactivity TTL or completed gameover TTL
+   */
+  public async cleanupStaleMatches(
+    inactivityTtlMs: number = 24 * 60 * 60 * 1000,
+    gameOverTtlMs: number = 2 * 60 * 60 * 1000
+  ): Promise<{ deletedCount: number; deletedIds: string[] }> {
+    const now = Date.now();
+    const inactivityCutoff = now - inactivityTtlMs;
+    const gameOverCutoff = now - gameOverTtlMs;
+
+    const client = await this.pool.connect();
+    try {
+      const res = await client.query(
+        `
+        DELETE FROM bgio_matches
+        WHERE (is_gameover = false AND updated_at < $1)
+           OR (is_gameover = true AND updated_at < $2)
+        RETURNING id
+        `,
+        [inactivityCutoff, gameOverCutoff]
+      );
+      return {
+        deletedCount: res.rowCount || 0,
+        deletedIds: res.rows.map((r) => r.id)
+      };
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * List detailed information for all rooms in the database for admin management
+   */
+  public async listAllRoomsDetails(): Promise<
+    Array<{
+      id: string;
+      gameName: string;
+      unlisted: boolean;
+      isGameover: boolean;
+      createdAt: number;
+      updatedAt: number;
+      players: Array<{ id: string; name?: string; isConnected?: boolean }>;
+    }>
+  > {
+    const client = await this.pool.connect();
+    try {
+      const res = await client.query(
+        `
+        SELECT id, game_name as "gameName", unlisted, is_gameover as "isGameover", created_at as "createdAt", updated_at as "updatedAt", metadata
+        FROM bgio_matches
+        ORDER BY updated_at DESC
+        `
+      );
+
+      return res.rows.map((row) => {
+        const playersMap = row.metadata?.players || {};
+        const players = Object.entries<any>(playersMap).map(([id, p]) => ({
+          id,
+          name: p.name,
+          isConnected: p.isConnected
+        }));
+
+        return {
+          id: row.id,
+          gameName: row.gameName,
+          unlisted: row.unlisted,
+          isGameover: row.isGameover,
+          createdAt: Number(row.createdAt),
+          updatedAt: Number(row.updatedAt),
+          players
+        };
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
    * Ping database to verify connection health
    */
   public async ping(): Promise<boolean> {

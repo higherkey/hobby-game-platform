@@ -67,6 +67,8 @@ export class BaseServer {
 
     return {
       server,
+      transport,
+      normalizedGames,
       run: () => {
         console.log(`[BoardGame Server] Starting on port ${port}...`);
         server.run(port);

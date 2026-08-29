@@ -4,6 +4,7 @@ import { SoCloverGame } from '../games/so-clover/game';
 import { CounterGame } from '../core/example';
 import { PostgresStore } from './db/PostgresStore';
 import { recordCompletedGame, getGameHistory } from './gameRecordsHook';
+import { registerAdminRoutes } from './adminRoutes';
 
 const PORT = Number(process.env.PORT) || 8000;
 
@@ -32,7 +33,7 @@ if (process.env.DATABASE_URL) {
 }
 
 // Create and start boardgame.io multiplayer server for all platform games
-const { server, run } = BaseServer.createServer([cloverGame, counterGame], {
+const { server, transport, normalizedGames, run } = BaseServer.createServer([cloverGame, counterGame], {
   port: PORT,
   origins: allowedOrigins,
   db
@@ -79,11 +80,43 @@ if (server.router) {
       };
     }
   });
+
+  // Register Admin API routes
+  registerAdminRoutes({
+    router: server.router,
+    db,
+    games: normalizedGames,
+    serverTransport: transport
+  });
+}
+
+// Background cleanup job: runs every 15 minutes to prune inactive rooms
+let cleanupTimer: NodeJS.Timeout | undefined;
+
+if (db) {
+  const runCleanup = async () => {
+    try {
+      console.log('[Server] Running automated stale rooms cleanup...');
+      const res = await db!.cleanupStaleMatches();
+      if (res.deletedCount > 0) {
+        console.log(`[Server] Automated cleanup removed ${res.deletedCount} stale room(s).`);
+      }
+    } catch (err) {
+      console.warn('[Server] Automated stale rooms cleanup error:', err);
+    }
+  };
+
+  // Run initial cleanup after 1 minute, then every 15 minutes
+  setTimeout(runCleanup, 60_000);
+  cleanupTimer = setInterval(runCleanup, 15 * 60 * 1000);
 }
 
 // Graceful shutdown handling
 const shutdown = async () => {
   console.log('[Server] Gracefully shutting down...');
+  if (cleanupTimer) {
+    clearInterval(cleanupTimer);
+  }
   if (db) {
     try {
       await db.close();

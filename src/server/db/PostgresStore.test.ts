@@ -203,6 +203,55 @@ describe('PostgresStore', () => {
     expect(mockClient.release).toHaveBeenCalled();
   });
 
+  it('cleans up stale matches exceeding inactivity and gameover TTL', async () => {
+    mockClient.query.mockResolvedValueOnce({
+      rowCount: 3,
+      rows: [{ id: 'match_1' }, { id: 'match_2' }, { id: 'match_3' }]
+    });
+
+    const store = new PostgresStore({ pool: mockPool });
+    const result = await store.cleanupStaleMatches(86400000, 7200000);
+
+    expect(result.deletedCount).toBe(3);
+    expect(result.deletedIds).toEqual(['match_1', 'match_2', 'match_3']);
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM bgio_matches'),
+      [expect.any(Number), expect.any(Number)]
+    );
+    expect(mockClient.release).toHaveBeenCalled();
+  });
+
+  it('lists detailed information for all rooms in listAllRoomsDetails()', async () => {
+    mockClient.query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 'match_1',
+          gameName: 'so-clover',
+          unlisted: false,
+          isGameover: false,
+          createdAt: 1000,
+          updatedAt: 2000,
+          metadata: {
+            players: {
+              '0': { name: 'Alice', isConnected: true },
+              '1': { name: 'Bob', isConnected: false }
+            }
+          }
+        }
+      ]
+    });
+
+    const store = new PostgresStore({ pool: mockPool });
+    const rooms = await store.listAllRoomsDetails();
+
+    expect(rooms).toHaveLength(1);
+    expect(rooms[0].id).toBe('match_1');
+    expect(rooms[0].gameName).toBe('so-clover');
+    expect(rooms[0].players).toHaveLength(2);
+    expect(rooms[0].players[0]).toEqual({ id: '0', name: 'Alice', isConnected: true });
+    expect(mockClient.release).toHaveBeenCalled();
+  });
+
   it('drains pool on close()', async () => {
     const store = new PostgresStore({ pool: mockPool });
     await store.close();

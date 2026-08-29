@@ -37,13 +37,18 @@ export interface JoinedRoomSession {
 }
 
 function getDefaultServerUrl(): string {
-  let url = 'http://localhost:8000';
   if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SERVER_URL) {
-    url = (import.meta as any).env.VITE_SERVER_URL;
-  } else if (typeof window !== 'undefined') {
-    url = `${window.location.protocol}//${window.location.hostname}:8000`;
+    return (import.meta as any).env.VITE_SERVER_URL.replace(/\/+$/, '');
   }
-  return url.replace(/\/+$/, '');
+  if (typeof window !== 'undefined') {
+    // In local dev (e.g. localhost or 127.0.0.1 on Vite dev server 5173), server runs on port 8000
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `${window.location.protocol}//${window.location.hostname}:8000`;
+    }
+    // In production / deployed web, server is at the same origin (no explicit :8000 port)
+    return window.location.origin;
+  }
+  return 'http://localhost:8000';
 }
 
 /**
@@ -198,7 +203,7 @@ export class BaseRoom<G extends any = any> {
         ? SocketIO({ server: this.serverUrl })
         : Local();
 
-    return Client({
+    const client = Client({
       game: this.game,
       matchID: matchID || 'default',
       playerID: playerID ?? undefined,
@@ -206,6 +211,19 @@ export class BaseRoom<G extends any = any> {
       multiplayer,
       debug
     }) as GameClientType<G>;
+
+    const originalStop = client.stop ? client.stop.bind(client) : undefined;
+    if (originalStop) {
+      client.stop = () => {
+        try {
+          originalStop();
+        } catch (err) {
+          console.warn('[BaseRoom] Handled SocketIO transport close error on stop():', err);
+        }
+      };
+    }
+
+    return client;
   }
 
   /**
