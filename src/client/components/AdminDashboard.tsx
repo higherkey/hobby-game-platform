@@ -227,22 +227,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
     return (
       <div className="token-modal-overlay">
         <div className="token-modal" role="dialog" aria-labelledby="admin-auth-title">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <KeyRound size={24} style={{ color: 'var(--text-accent)' }} />
+          <div className="token-modal-header">
+            <KeyRound size={26} />
             <h2 id="admin-auth-title">Admin Access Gate</h2>
           </div>
 
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+          <p className="admin-card-subtitle">
             Enter your <code>ADMIN_SECRET</code> token to manage server rooms and maintenance tasks.
           </p>
 
           {authError && (
-            <div className="badge badge-red" style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)' }}>
-              <AlertTriangle size={16} style={{ marginRight: '0.35rem' }} /> {authError}
+            <div className="badge badge-red">
+              <AlertTriangle size={16} /> {authError}
             </div>
           )}
 
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form onSubmit={handleLogin} className="form-group">
             <input
               type="password"
               className="form-input"
@@ -252,20 +252,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
               autoFocus
             />
 
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <div className="token-modal-actions">
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary token-btn-half"
                 onClick={onBackToLobby}
-                style={{ flex: 1 }}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="btn-primary"
+                className="btn-primary token-btn-half"
                 disabled={isVerifyingAuth || !tokenInput.trim()}
-                style={{ flex: 1 }}
               >
                 {isVerifyingAuth ? 'Verifying...' : 'Authenticate'}
               </button>
@@ -280,11 +278,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
     <div className="admin-container">
       <div className="admin-header">
         <div className="admin-header-title">
-          <ShieldAlert size={28} style={{ color: 'var(--text-accent)' }} />
+          <ShieldAlert size={28} />
           Admin Room Management
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div className="admin-header-actions">
           <button type="button" className="btn-secondary" onClick={() => fetchRooms(token)} disabled={isLoadingRooms}>
             <RefreshCw size={16} className={isLoadingRooms ? 'spin-animation' : ''} /> Refresh
           </button>
@@ -297,7 +295,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
       {statusMessage && (
         <div
           className={`badge ${statusMessage.type === 'success' ? 'badge-green' : 'badge-red'}`}
-          style={{ padding: '0.65rem 1rem', fontSize: '0.9rem', borderRadius: 'var(--radius-md)' }}
         >
           {statusMessage.text}
         </div>
@@ -316,8 +313,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
         </div>
 
         <div className="metric-card">
-          <div className="metric-icon-wrapper" style={{ backgroundColor: 'var(--bg-accent-light)' }}>
-            <Clock size={22} style={{ color: 'var(--text-accent)' }} />
+          <div className="metric-icon-wrapper">
+            <Clock size={22} />
           </div>
           <div>
             <div className="metric-value">{activeRoomsCount}</div>
@@ -326,8 +323,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
         </div>
 
         <div className="metric-card">
-          <div className="metric-icon-wrapper" style={{ backgroundColor: 'var(--bg-warning)' }}>
-            <AlertTriangle size={22} style={{ color: 'var(--text-warning)' }} />
+          <div className="metric-icon-wrapper warning">
+            <AlertTriangle size={22} />
           </div>
           <div>
             <div className="metric-value">{staleRoomsCount}</div>
@@ -340,7 +337,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
             <Server size={22} />
           </div>
           <div>
-            <div className="metric-value" style={{ textTransform: 'capitalize' }}>
+            <div className="metric-value">
               {storageType}
             </div>
             <div className="metric-label">Database Mode</div>
@@ -352,11 +349,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
       <div className="admin-card">
         <h3 className="admin-card-title">
           <span>Manually Spawn Room</span>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Direct Server Matchmaker</span>
+          <span className="admin-card-subtitle">Direct Server Matchmaker</span>
         </h3>
 
         <form onSubmit={handleCreateRoom} className="admin-form-row">
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group">
             <label className="form-label" htmlFor="admin-game-select">Game</label>
             <select
               id="admin-game-select"
@@ -369,7 +366,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
             </select>
           </div>
 
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group">
             <label className="form-label" htmlFor="admin-players-select">Players</label>
             <select
               id="admin-players-select"
@@ -386,14 +383,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
             </select>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingBottom: '0.6rem' }}>
+          <div className="admin-checkbox-group">
             <input
               type="checkbox"
               id="admin-unlisted-check"
               checked={newUnlisted}
               onChange={(e) => setNewUnlisted(e.target.checked)}
             />
-            <label htmlFor="admin-unlisted-check" style={{ fontSize: '0.85rem', cursor: 'pointer' }}>
+            <label htmlFor="admin-unlisted-check" className="admin-checkbox-label">
               Unlisted (Private)
             </label>
           </div>
@@ -413,14 +410,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
             className="btn-secondary"
             onClick={handleRunCleanup}
             disabled={isCleaningUp}
-            style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
           >
             <Clock size={14} /> {isCleaningUp ? 'Pruning...' : 'Prune Stale Rooms Now'}
           </button>
         </div>
 
         {rooms.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+          <div className="admin-empty-state">
             No rooms currently registered on the server.
           </div>
         ) : (
@@ -443,16 +439,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
 
                   return (
                     <tr key={r.id}>
-                      <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>
+                      <td className="admin-match-id">
                         #{r.id}
-                        {r.unlisted && <span className="badge badge-yellow" style={{ marginLeft: '0.35rem', fontSize: '0.7rem' }}>Private</span>}
+                        {r.unlisted && <span className="badge badge-yellow">Private</span>}
                       </td>
-                      <td style={{ textTransform: 'capitalize' }}>{r.gameName}</td>
+                      <td>{r.gameName}</td>
                       <td>
-                        <span className="badge badge-green" style={{ marginRight: '0.5rem' }}>
+                        <span className="badge badge-green">
                           {r.players.filter((p) => p.name).length} / {r.players.length}
                         </span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        <span>
                           {r.players.map((p) => p.name || 'Empty').join(', ')}
                         </span>
                       </td>
@@ -465,7 +461,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToLobby })
                           <span className="badge badge-green">In Progress</span>
                         )}
                       </td>
-                      <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      <td>
                         {minutesAgo < 1 ? 'Just now' : `${minutesAgo}m ago`}
                       </td>
                       <td>
