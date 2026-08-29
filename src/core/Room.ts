@@ -233,4 +233,28 @@ export class BaseRoom<G extends any = any> {
       }
     }
   }
+
+  /**
+   * Verifies if a saved session corresponds to an active match on the server.
+   * If the match is invalid or expired, clears the session and returns null.
+   */
+  public async verifySession(matchID: string): Promise<JoinedRoomSession | null> {
+    const session = this.getSavedSession(matchID);
+    if (!session) return null;
+
+    if (this.lobbyClient) {
+      try {
+        const match = await this.lobbyClient.getMatch(this.gameName, matchID);
+        if (!match) {
+          this.clearSession(matchID);
+          return null;
+        }
+      } catch (err) {
+        console.warn(`[BaseRoom] Match ${matchID} not found or expired:`, err);
+        this.clearSession(matchID);
+        return null;
+      }
+    }
+    return session;
+  }
 }
