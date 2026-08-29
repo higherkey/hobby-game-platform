@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { SoCloverGameState, Direction } from '../games/so-clover/types';
 import { SoCloverGame } from '../games/so-clover/game';
 import { BaseRoom, type GameClientType } from '../core/Room';
@@ -18,20 +18,21 @@ import {
 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const game = useMemo(() => new SoCloverGame(), []);
-  const roomManager = useMemo(
-    () =>
-      new BaseRoom<SoCloverGameState>({
-        gameName: game.name,
-        game: game
-      }),
-    [game]
-  );
+  const [roomManager] = useState(() => {
+    const game = new SoCloverGame();
+    return new BaseRoom<SoCloverGameState>({
+      gameName: game.name,
+      game: game
+    });
+  });
 
   const [inGame, setInGame] = useState(false);
   const [isDesktopView, setIsDesktopView] = useState(false);
   const [gameState, setGameState] = useState<{ G: SoCloverGameState; ctx: any } | null>(null);
   const [clientInstance, setClientInstance] = useState<GameClientType<SoCloverGameState> | null>(null);
+  const [activeSession, setActiveSession] = useState<{ matchID: string; playerID: string; credentials?: string } | null>(null);
+
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   // Local/Active viewer state
   const [localActivePlayerId, setLocalActivePlayerId] = useState('0');
@@ -41,13 +42,16 @@ export const App: React.FC = () => {
   // Clean up client on unmount
   useEffect(() => {
     return () => {
+      unsubscribeRef.current?.();
       if (clientInstance) {
         clientInstance.stop();
       }
     };
   }, [clientInstance]);
 
-  const handleStartLocalGame = useCallback((numPlayers: number, playerName: string) => {
+  const handleStartLocalGame = useCallback((_numPlayers: number, _playerName: string) => {
+    unsubscribeRef.current?.();
+
     const client = roomManager.createGameClient({
       matchID: `local-${Date.now()}`,
       playerID: '0',
@@ -56,18 +60,14 @@ export const App: React.FC = () => {
 
     client.start();
 
-    // Initial setup with player names
-    const playerNames: Record<string, string> = { '0': playerName };
-    for (let i = 1; i < numPlayers; i++) {
-      playerNames[String(i)] = `Player ${i + 1}`;
-    }
-
-    client.subscribe((state: any) => {
+    const unsubscribe = client.subscribe((state: any) => {
       if (state) {
         setGameState({ G: state.G, ctx: state.ctx });
       }
     });
+    unsubscribeRef.current = unsubscribe;
 
+    setActiveSession(null);
     setClientInstance(client);
     setLocalActivePlayerId('0');
     setInGame(true);
@@ -77,6 +77,8 @@ export const App: React.FC = () => {
     async (matchID: string, playerID: string, playerName: string) => {
       try {
         const session = await roomManager.joinRoom(matchID, playerID, playerName);
+        unsubscribeRef.current?.();
+
         const client = roomManager.createGameClient({
           matchID: session.matchID,
           playerID: session.playerID,
@@ -85,12 +87,18 @@ export const App: React.FC = () => {
         });
 
         client.start();
-        client.subscribe((state: any) => {
+        const unsubscribe = client.subscribe((state: any) => {
           if (state) {
             setGameState({ G: state.G, ctx: state.ctx });
           }
         });
+        unsubscribeRef.current = unsubscribe;
 
+        setActiveSession({
+          matchID: session.matchID,
+          playerID: session.playerID,
+          credentials: session.playerCredentials
+        });
         setClientInstance(client);
         setLocalActivePlayerId(playerID);
         setInGame(true);
@@ -102,9 +110,16 @@ export const App: React.FC = () => {
   );
 
   const handleLeaveGame = () => {
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = null;
+
     if (clientInstance) {
       clientInstance.stop();
       setClientInstance(null);
+    }
+    if (activeSession) {
+      roomManager.leaveRoom(activeSession.matchID, activeSession.playerID, activeSession.credentials).catch(console.warn);
+      setActiveSession(null);
     }
     setGameState(null);
     setInGame(false);
@@ -242,8 +257,8 @@ export const App: React.FC = () => {
               </span>
             </div>
 
-            {/* Hotseat / Player Switcher for testing/multi-seat on single device */}
-            {G.playerOrder.length > 1 && (
+            {/* Hotseat / Player Switcher only for local multi-seat play on single device */}
+            {activeSession === null && G.playerOrder.length > 1 && (
               <div className="stat-item">
                 <Users size={14} />
                 <select

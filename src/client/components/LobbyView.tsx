@@ -20,6 +20,31 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
 
+  useEffect(() => {
+    let isMounted = true;
+    if (activeTab === 'online') {
+      setIsLoadingRooms(true);
+      roomManager
+        .listRooms()
+        .then((list) => {
+          if (isMounted) {
+            setRooms(list);
+          }
+        })
+        .catch((e) => {
+          console.warn('Failed to list rooms:', e);
+        })
+        .finally(() => {
+          if (isMounted) {
+            setIsLoadingRooms(false);
+          }
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab, roomManager]);
+
   const fetchRooms = async () => {
     setIsLoadingRooms(true);
     try {
@@ -31,12 +56,6 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
       setIsLoadingRooms(false);
     }
   };
-
-  useEffect(() => {
-    if (activeTab === 'online') {
-      fetchRooms();
-    }
-  }, [activeTab]);
 
   const handleCreateOnlineRoom = async () => {
     setIsCreatingRoom(true);

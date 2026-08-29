@@ -17,6 +17,23 @@ describe('BaseGame and assertJsonSerializable', () => {
     expect(() => assertJsonSerializable(valid)).not.toThrow();
   });
 
+  it('allows valid Directed Acyclic Graphs (DAGs) with shared object references', () => {
+    const sharedChild = { id: 'card-1', text: 'apple' };
+    const dagState = {
+      player1: { selected: sharedChild },
+      player2: { preview: sharedChild },
+      tray: [sharedChild]
+    };
+    expect(() => assertJsonSerializable(dagState)).not.toThrow();
+  });
+
+  it('rejects circular references and prevents call stack exhaustion', () => {
+    const circularObj: any = { name: 'cycle' };
+    circularObj.self = circularObj;
+
+    expect(() => assertJsonSerializable(circularObj)).toThrowError(/Circular reference detected/);
+  });
+
   it('rejects functions in state', () => {
     const invalid = {
       count: 0,
@@ -40,6 +57,19 @@ describe('BaseGame and assertJsonSerializable', () => {
       sym: Symbol('test')
     };
     expect(() => assertJsonSerializable(invalid)).toThrowError(/Illegal Symbol detected/);
+  });
+
+  it('rejects BigInt in state', () => {
+    const invalid = {
+      big: BigInt(9007199254740991)
+    };
+    expect(() => assertJsonSerializable(invalid)).toThrowError(/Illegal BigInt detected/);
+  });
+
+  it('rejects non-finite numbers (NaN and Infinity)', () => {
+    expect(() => assertJsonSerializable({ val: NaN })).toThrowError(/Non-finite number/);
+    expect(() => assertJsonSerializable({ val: Infinity })).toThrowError(/Non-finite number/);
+    expect(() => assertJsonSerializable({ val: -Infinity })).toThrowError(/Non-finite number/);
   });
 
   it('wraps setup and moves with validation in BaseGame', () => {

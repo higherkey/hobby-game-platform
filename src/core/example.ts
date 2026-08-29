@@ -5,7 +5,7 @@ import type { Ctx } from 'boardgame.io';
 // 1. Define game state interface (G)
 export interface CounterGameState {
   count: number;
-  history: Array<{ player: string; amount: number; timestamp: number }>;
+  history: Array<{ player: string; amount: number; actionIndex: number }>;
 }
 
 // 2. Define Game by extending BaseGame
@@ -29,7 +29,7 @@ export class CounterGame extends BaseGame<CounterGameState> {
       G.history.push({
         player: ctx.currentPlayer,
         amount,
-        timestamp: Date.now()
+        actionIndex: G.history.length + 1
       });
     },
     reset: ({ G, ctx }: { G: CounterGameState; ctx: Ctx }) => {
@@ -37,7 +37,7 @@ export class CounterGame extends BaseGame<CounterGameState> {
       G.history.push({
         player: ctx.currentPlayer,
         amount: 0,
-        timestamp: Date.now()
+        actionIndex: G.history.length + 1
       });
     }
   };

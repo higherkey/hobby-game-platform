@@ -6,7 +6,11 @@ export type GameStateValidator = (state: unknown) => boolean;
  * Validates that an object is strictly JSON-serializable (plain objects, arrays, primitives, null).
  * Rejects functions, class instances (except plain Object/Array), Symbols, non-finite numbers, etc.
  */
-export function assertJsonSerializable(value: unknown, path = 'G'): void {
+export function assertJsonSerializable(
+  value: unknown,
+  path = 'G',
+  ancestors: Set<unknown> = new Set()
+): void {
   if (value === null || value === undefined) {
     return;
   }
@@ -37,6 +41,10 @@ export function assertJsonSerializable(value: unknown, path = 'G'): void {
   }
 
   if (type === 'object') {
+    if (ancestors.has(value)) {
+      throw new TypeError(`[Game State Validation Error] Circular reference detected in game state at "${path}". G must be strictly JSON-serializable without cycles.`);
+    }
+
     // Check if it's a plain object or Array
     const proto = Object.getPrototypeOf(value);
     const isPlainObject = proto === null || proto === Object.prototype;
@@ -49,17 +57,24 @@ export function assertJsonSerializable(value: unknown, path = 'G'): void {
       );
     }
 
-    // Check children recursively
-    if (isArray) {
-      const arr = value as unknown[];
-      for (let i = 0; i < arr.length; i++) {
-        assertJsonSerializable(arr[i], `${path}[${i}]`);
+    ancestors.add(value);
+
+    try {
+      // Check children recursively
+      if (isArray) {
+        const arr = value as unknown[];
+        for (let i = 0; i < arr.length; i++) {
+          assertJsonSerializable(arr[i], `${path}[${i}]`, ancestors);
+        }
+      } else {
+        const obj = value as Record<string, unknown>;
+        for (const [key, val] of Object.entries(obj)) {
+          assertJsonSerializable(val, `${path}.${key}`, ancestors);
+        }
       }
-    } else {
-      const obj = value as Record<string, unknown>;
-      for (const [key, val] of Object.entries(obj)) {
-        assertJsonSerializable(val, `${path}.${key}`);
-      }
+    } finally {
+      // Backtrack: Remove from ancestor chain so DAGs / multiple shared references are permitted
+      ancestors.delete(value);
     }
   }
 }

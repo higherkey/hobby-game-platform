@@ -1,6 +1,7 @@
-import { BaseGame } from '../../core/Game';
 import type { Ctx } from 'boardgame.io';
 import { INVALID_MOVE } from 'boardgame.io/core';
+import { BaseGame } from '../../core/Game';
+import { KEYWORD_DECK } from './words';
 import type {
   SoCloverGameState,
   PlayerBoard,
@@ -8,53 +9,123 @@ import type {
   PlacedCard,
   Direction
 } from './types';
-import { KEYWORD_DECK } from './words';
 
-/**
- * Gets the visible word on an edge for a card with given rotation.
- * edge: 0 = Top, 1 = Right, 2 = Bottom, 3 = Left
- * rotation: 0 = 0°, 1 = 90° CW, 2 = 180° CW, 3 = 270° CW
- */
-export function getEdgeWord(card: KeywordCard, rotation: number, edge: number): string {
-  const index = ((edge - rotation) % 4 + 4) % 4;
-  return card.words[index];
+const KEYWORD_MAP = new Map<string, KeywordCard>(KEYWORD_DECK.map((c) => [c.id, c]));
+
+export function getCardById(cardId: string): KeywordCard | undefined {
+  return KEYWORD_MAP.get(cardId);
 }
 
 /**
- * Extracts the 4 keyword pairs for a given player's secret board setup
+ * Deterministic Fisher-Yates shuffle using an optional random generator function.
  */
-export function getBoardKeywordPairs(
-  secretCards: KeywordCard[],
-  secretSolution: PlacedCard[]
-): Record<Direction, [string, string]> {
-  const card0 = secretCards[0];
-  const rot0 = secretSolution[0].rotation;
-
-  const card1 = secretCards[1];
-  const rot1 = secretSolution[1].rotation;
-
-  const card2 = secretCards[2];
-  const rot2 = secretSolution[2].rotation;
-
-  const card3 = secretCards[3];
-  const rot3 = secretSolution[3].rotation;
-
-  return {
-    north: [getEdgeWord(card0, rot0, 0), getEdgeWord(card1, rot1, 0)],
-    east: [getEdgeWord(card1, rot1, 1), getEdgeWord(card3, rot3, 1)],
-    south: [getEdgeWord(card3, rot3, 2), getEdgeWord(card2, rot2, 2)],
-    west: [getEdgeWord(card2, rot2, 3), getEdgeWord(card0, rot0, 3)]
-  };
-}
-
-export function shuffleArray<T>(array: T[], seedRandom?: () => number): T[] {
-  const rand = seedRandom || Math.random;
+export function shuffleArray<T>(array: T[], randFn?: () => number): T[] {
+  const rand = randFn || (() => 0.5);
   const result = [...array];
   for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
+}
+
+/**
+ * Returns rotation value (0, 1, 2, 3) deterministically via ctx.random or fallback.
+ */
+function getRandomRotation(ctx?: Ctx, fallbackIndex: number = 0): number {
+  const random = (ctx as any)?.random;
+  if (random?.Die) {
+    return random.Die(4) - 1;
+  }
+  if (random?.Number) {
+    return Math.floor(random.Number() * 4);
+  }
+  return fallbackIndex % 4;
+}
+
+/**
+ * Deterministic array shuffle via ctx.random or fallback.
+ */
+function shuffleWithCtx<T>(array: T[], ctx?: Ctx): T[] {
+  const random = (ctx as any)?.random;
+  if (random?.Shuffle) {
+    return random.Shuffle([...array]);
+  }
+  if (random?.Number) {
+    return shuffleArray(array, () => random.Number());
+  }
+  return [...array];
+}
+
+/**
+ * Derives the outer edge keyword pair for a given direction based on placed cards and their rotations.
+ *
+ * Board Slot Layout (2x2 Grid):
+ * [Slot 0: Top-Left]     [Slot 1: Top-Right]
+ * [Slot 2: Bottom-Left]  [Slot 3: Bottom-Right]
+ *
+ * Outer Edges:
+ * - North: Slot 0 top word + Slot 1 top word
+ * - East:  Slot 1 right word + Slot 3 right word
+ * - South: Slot 3 bottom word + Slot 2 bottom word
+ * - West:  Slot 2 left word + Slot 0 left word
+ */
+export function getKeywordForEdge(
+  slots: (PlacedCard | null)[],
+  allCards: KeywordCard[],
+  direction: Direction
+): [string, string] {
+  const getWordAtCardOrientation = (
+    placed: PlacedCard | null,
+    cardEdgeIndex: number // 0: Top, 1: Right, 2: Bottom, 3: Left in absolute board orientation
+  ): string => {
+    if (!placed) return '';
+    const card = allCards.find((c) => c.id === placed.cardId);
+    if (!card) return '';
+
+    // Relative edge on the card considering rotation:
+    // (cardEdgeIndex - rotation + 4) % 4
+    const originalEdge = (cardEdgeIndex - placed.rotation + 4) % 4;
+    return card.words[originalEdge] || '';
+  };
+
+  switch (direction) {
+    case 'north':
+      return [getWordAtCardOrientation(slots[0], 0), getWordAtCardOrientation(slots[1], 0)];
+    case 'east':
+      return [getWordAtCardOrientation(slots[1], 1), getWordAtCardOrientation(slots[3], 1)];
+    case 'south':
+      return [getWordAtCardOrientation(slots[3], 2), getWordAtCardOrientation(slots[2], 2)];
+    case 'west':
+      return [getWordAtCardOrientation(slots[2], 3), getWordAtCardOrientation(slots[0], 3)];
+  }
+}
+
+/**
+ * Derives the word for a single card edge given its rotation.
+ */
+export function getEdgeWord(
+  card: KeywordCard,
+  rotation: number,
+  edgeIndex: number
+): string {
+  const originalEdge = (edgeIndex - rotation + 4) % 4;
+  return card.words[originalEdge] || '';
+}
+
+/**
+ * Returns keyword pairs for all 4 outer edges of a clover board.
+ */
+export function getBoardKeywordPairs(
+  cards: KeywordCard[],
+  solution: PlacedCard[]
+): Record<Direction, [string, string]> {
+  return {
+    north: getKeywordForEdge(solution, cards, 'north'),
+    east: getKeywordForEdge(solution, cards, 'east'),
+    south: getKeywordForEdge(solution, cards, 'south'),
+    west: getKeywordForEdge(solution, cards, 'west')
+  };
 }
 
 /**
@@ -74,7 +145,8 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
   public maxPlayers = 6;
 
   public setup(ctx: Ctx, setupData?: { playerNames?: Record<string, string>; customDeck?: KeywordCard[] }): SoCloverGameState {
-    const deck = shuffleArray(setupData?.customDeck || KEYWORD_DECK);
+    const rawDeck = setupData?.customDeck || KEYWORD_DECK;
+    const deck = shuffleWithCtx(rawDeck, ctx);
     const numPlayers = ctx.numPlayers || 1;
     const playerOrder: string[] = [];
     const players: Record<string, PlayerBoard> = {};
@@ -92,10 +164,10 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       }
       const distractor = deck[deckIndex++ % deck.length];
 
-      // Generate random initial rotations for secret solution
-      const secretSolution: PlacedCard[] = secretCards.map((card) => ({
+      // Generate deterministic initial rotations for secret solution
+      const secretSolution: PlacedCard[] = secretCards.map((card, cardIdx) => ({
         cardId: card.id,
-        rotation: Math.floor(Math.random() * 4)
+        rotation: getRandomRotation(ctx, i * 4 + cardIdx)
       }));
 
       players[pid] = {
@@ -127,7 +199,7 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       currentSpectatorIndex: 0,
       totalScore: 0,
       maxPossibleScore: numPlayers * 6,
-      deck: deck.slice(deckIndex)
+      deck: deck.slice(deckIndex % deck.length)
     };
   }
 
@@ -136,7 +208,7 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
     // PHASE 1: CLUE WRITING
     // -------------------------------------------------------------
     submitClues: (
-      { G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
+      { G, ctx, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
       playerId: string,
       clues: { north: string; east: string; south: string; west: string }
     ) => {
@@ -163,13 +235,14 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
         G.phase = 'resolution';
         G.currentSpectatorIndex = 0;
 
-        // Initialize each player's cardPool for resolution
-        for (const pid of G.playerOrder) {
+        // Initialize each player's cardPool for resolution deterministically
+        for (let pIdx = 0; pIdx < G.playerOrder.length; pIdx++) {
+          const pid = G.playerOrder[pIdx];
           const p = G.players[pid];
           const cardsForPool = [...p.secretCards, p.secretDistractor];
-          const shuffledPool = shuffleArray(cardsForPool).map((card) => ({
+          const shuffledPool = shuffleWithCtx(cardsForPool, ctx).map((card, cIdx) => ({
             card: card,
-            rotation: Math.floor(Math.random() * 4)
+            rotation: getRandomRotation(ctx, pIdx * 5 + cIdx)
           }));
 
           p.cardPool = shuffledPool;
@@ -184,7 +257,7 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
     // PHASE 2: RESOLUTION MOVES
     // -------------------------------------------------------------
     placeCard: (
-      { G }: { G: SoCloverGameState; ctx: Ctx },
+      { G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
       slotIndex: number,
       cardId: string,
       rotation: number = 0
@@ -193,6 +266,11 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       const spectatorId = G.playerOrder[G.currentSpectatorIndex];
       const board = G.players[spectatorId];
       if (!board || board.isResolved) return INVALID_MOVE;
+
+      // Authorization guard: The active spectator whose board is being guessed cannot place cards
+      if (playerID !== undefined && playerID === spectatorId) {
+        return INVALID_MOVE;
+      }
 
       if (slotIndex < 0 || slotIndex > 3 || !Number.isInteger(slotIndex)) return INVALID_MOVE;
       if (board.lockedSlots[slotIndex]) return INVALID_MOVE;
@@ -213,8 +291,7 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       // If slot had an existing card, return that card to pool
       const existing = board.currentSlots[slotIndex];
       if (existing) {
-        const allCards = [...board.secretCards, board.secretDistractor];
-        const origCard = allCards.find((c) => c.id === existing.cardId);
+        const origCard = getCardById(existing.cardId);
         if (origCard) {
           board.cardPool.push({ card: origCard, rotation: existing.rotation });
         }
@@ -226,11 +303,19 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       };
     },
 
-    removeCard: ({ G }: { G: SoCloverGameState; ctx: Ctx }, slotIndex: number) => {
+    removeCard: (
+      { G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
+      slotIndex: number
+    ) => {
       if (G.phase !== 'resolution') return INVALID_MOVE;
       const spectatorId = G.playerOrder[G.currentSpectatorIndex];
       const board = G.players[spectatorId];
       if (!board || board.isResolved) return INVALID_MOVE;
+
+      // Authorization guard: Spectator cannot manipulate slots
+      if (playerID !== undefined && playerID === spectatorId) {
+        return INVALID_MOVE;
+      }
 
       if (slotIndex < 0 || slotIndex > 3 || !Number.isInteger(slotIndex)) return INVALID_MOVE;
       if (board.lockedSlots[slotIndex]) return INVALID_MOVE;
@@ -238,8 +323,7 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       const placed = board.currentSlots[slotIndex];
       if (!placed) return;
 
-      const allCards = [...board.secretCards, board.secretDistractor];
-      const origCard = allCards.find((c) => c.id === placed.cardId);
+      const origCard = getCardById(placed.cardId);
       if (origCard) {
         board.cardPool.push({ card: origCard, rotation: placed.rotation });
       }
@@ -247,11 +331,19 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       board.currentSlots[slotIndex] = null;
     },
 
-    rotateSlotCard: ({ G }: { G: SoCloverGameState; ctx: Ctx }, slotIndex: number) => {
+    rotateSlotCard: (
+      { G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
+      slotIndex: number
+    ) => {
       if (G.phase !== 'resolution') return INVALID_MOVE;
       const spectatorId = G.playerOrder[G.currentSpectatorIndex];
       const board = G.players[spectatorId];
       if (!board || board.isResolved) return INVALID_MOVE;
+
+      // Authorization guard: Spectator cannot manipulate slots
+      if (playerID !== undefined && playerID === spectatorId) {
+        return INVALID_MOVE;
+      }
 
       if (slotIndex < 0 || slotIndex > 3 || !Number.isInteger(slotIndex)) return INVALID_MOVE;
       if (board.lockedSlots[slotIndex]) return INVALID_MOVE;
@@ -262,11 +354,19 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       }
     },
 
-    rotatePoolCard: ({ G }: { G: SoCloverGameState; ctx: Ctx }, cardId: string) => {
+    rotatePoolCard: (
+      { G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
+      cardId: string
+    ) => {
       if (G.phase !== 'resolution') return INVALID_MOVE;
       const spectatorId = G.playerOrder[G.currentSpectatorIndex];
       const board = G.players[spectatorId];
       if (!board || board.isResolved) return INVALID_MOVE;
+
+      // Authorization guard: Spectator cannot manipulate pool
+      if (playerID !== undefined && playerID === spectatorId) {
+        return INVALID_MOVE;
+      }
 
       const poolItem = board.cardPool.find((p) => p.card.id === cardId);
       if (poolItem) {
@@ -274,11 +374,16 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       }
     },
 
-    submitGuess: ({ G }: { G: SoCloverGameState; ctx: Ctx }) => {
+    submitGuess: ({ G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string }) => {
       if (G.phase !== 'resolution') return INVALID_MOVE;
       const spectatorId = G.playerOrder[G.currentSpectatorIndex];
       const board = G.players[spectatorId];
       if (!board || board.isResolved) return INVALID_MOVE;
+
+      // Authorization guard: Spectator cannot submit guess on their own board
+      if (playerID !== undefined && playerID === spectatorId) {
+        return INVALID_MOVE;
+      }
 
       // Check if all 4 slots are filled
       const allFilled = board.currentSlots.every((s) => s !== null);
@@ -287,10 +392,10 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
       }
 
       // Check correctness of each slot against secret solution
-      const allCards = [...board.secretCards, board.secretDistractor];
       const slotCorrectness = board.currentSlots.map((placed, slotIdx) => {
         if (!placed) return false;
         const target = board.secretSolution[slotIdx];
+        if (!target) return false;
         return target.cardId === placed.cardId && target.rotation === placed.rotation;
       });
 
@@ -311,7 +416,7 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
             } else {
               const placed = board.currentSlots[slotIdx];
               if (placed) {
-                const origCard = allCards.find((c) => c.id === placed.cardId);
+                const origCard = getCardById(placed.cardId);
                 if (origCard) {
                   board.cardPool.push({ card: origCard, rotation: placed.rotation });
                 }
@@ -350,11 +455,13 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
   };
 
   /**
-   * Information Disclosure Defense:
-   * Strips secretSolution and distractor details for unauthorized player views when resolved in online mode.
+   * Information Disclosure Defense (Anti-Cheat Fog of War):
+   * Strips secretSolution and secret cards for unauthorized player views when in online mode.
+   * The board owner (author/spectator) retains full view of their secretSolution.
+   * Once a board is resolved, full details are revealed to everyone.
    */
   public playerView = ({ G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID: string | null }) => {
-    // If local or game over, return full state
+    // If local hotseat or game over, return full state
     if (G.phase === 'game_over' || !playerID) {
       return G;
     }
@@ -363,12 +470,18 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
 
     for (const [pid, board] of Object.entries(G.players)) {
       if (pid === playerID || board.isResolved) {
+        // Author or resolved board: full visibility
         sanitizedPlayers[pid] = board;
       } else {
-        // Redact secretSolution during resolution to prevent client inspection tampering
+        // Non-owner during active gameplay: redact secret solution, secret cards, and distractor
         sanitizedPlayers[pid] = {
           ...board,
-          secretSolution: []
+          secretCards: [],
+          secretSolution: [],
+          secretDistractor: {
+            id: '__hidden__',
+            words: ['', '', '', '']
+          }
         };
       }
     }
