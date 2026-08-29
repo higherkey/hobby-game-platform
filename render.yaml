@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: hobby-game-server
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8000

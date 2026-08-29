@@ -1,0 +1,225 @@
+:root {
+  --bg-main: #f4f8f3;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-clover: #2e7d32;
+  --bg-clover-leaf: #388e3c;
+  --bg-clover-slot: #e8f5e9;
+  --bg-clover-slot-hover: #c8e6c9;
+  --bg-accent: #1b5e20;
+  --bg-accent-light: #e8f5e9;
+  --bg-warning: #fff3e0;
+  --bg-error: #ffebee;
+
+  --text-main: #1f2937;
+  --text-muted: #4b5563;
+  --text-inverted: #ffffff;
+  --text-accent: #1b5e20;
+  --text-error: #b71c1c;
+  --text-warning: #b45309;
+
+  --border-subtle: #d1d5db;
+  --border-strong: #9ca3af;
+  --border-accent: #2e7d32;
+  --border-clover: #1b5e20;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-clover: 0 12px 24px -4px rgba(27, 94, 32, 0.25);
+
+  --font-family-display: 'Fredoka', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  --transition-speed: 0.2s;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-family-body);
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  line-height: 1.5;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, .brand-title {
+  font-family: var(--font-family-display);
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: all var(--transition-speed) ease;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Keyboard accessibility outline */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--border-clover);
+  outline-offset: 2px;
+}
+
+input, select {
+  font-family: inherit;
+  font-size: 1rem;
+  min-height: 44px;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.app-header {
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: var(--shadow-sm);
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-logo {
+  width: 36px;
+  height: 36px;
+  background-color: var(--bg-clover);
+  color: var(--text-inverted);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-family: var(--font-family-display);
+  font-size: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.header-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-accent);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  background-color: var(--bg-accent-light);
+  color: var(--text-accent);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.view-toggle-btn:hover {
+  background-color: #dcf2dd;
+}
+
+.view-toggle-btn.active {
+  background-color: var(--bg-accent);
+  color: var(--text-inverted);
+}
+
+.btn-primary {
+  background-color: var(--bg-clover);
+  color: var(--text-inverted);
+  padding: 0.6rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--bg-accent);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: #e5e7eb;
+  color: var(--text-main);
+  padding: 0.6rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #d1d5db;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badge-green {
+  background-color: var(--bg-accent-light);
+  color: var(--text-accent);
+}
+
+.badge-yellow {
+  background-color: var(--bg-warning);
+  color: var(--text-warning);
+}
+
+.badge-red {
+  background-color: var(--bg-error);
+  color: var(--text-error);
+}

@@ -1,0 +1,31 @@
+/* ==========================================================================
+   Score Breakdown & GameOver Utilities
+   ========================================================================== */
+
+.score-subtext {
+  font-size: 1.5rem;
+  color: var(--text-muted);
+}
+
+.legend-description {
+  color: #4b5563;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.score-breakdown-card {
+  width: 100%;
+  text-align: left;
+}
+
+.score-breakdown-title {
+  margin-bottom: 0.75rem;
+}
+
+.score-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
