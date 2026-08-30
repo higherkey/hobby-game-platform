@@ -181,4 +181,32 @@ const shutdown = async () => {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-run();
+async function startServer() {
+  if (db) {
+    const maxRetries = 3;
+    let connected = false;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[Server] Running database migrations (attempt ${attempt}/${maxRetries})...`);
+        await db.connect();
+        console.log('[Server] Database connected and schema ready.');
+        connected = true;
+        break;
+      } catch (err) {
+        console.error(`[Server] Database connection attempt ${attempt} failed:`, err);
+        if (attempt < maxRetries) {
+          console.log('[Server] Retrying database connection in 1.5s...');
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+    }
+
+    if (!connected) {
+      console.warn('[Server] Starting server without database connection. Fallback in-memory behavior will be used.');
+    }
+  }
+  run();
+}
+
+startServer();

@@ -58,10 +58,17 @@ export class PostgresStore {
     // Validate schema name to alphanumeric/underscore to prevent injection
     this.schema = /^[a-zA-Z0-9_]+$/.test(rawSchema) ? rawSchema : 'public';
 
-    if (typeof configOrUrl === 'string') {
-      const isProduction = process.env.NODE_ENV === 'production';
-      const needsSsl = isProduction || configOrUrl.includes('sslmode=require') || configOrUrl.includes('render.com');
+    const connectionStr = typeof configOrUrl === 'string' ? configOrUrl : configOrUrl.connectionString || '';
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isRemoteDb =
+      connectionStr.includes('sslmode=require') ||
+      connectionStr.includes('render.com') ||
+      connectionStr.includes('amazonaws.com') ||
+      connectionStr.includes('supabase.co') ||
+      connectionStr.includes('neon.tech');
 
+    if (typeof configOrUrl === 'string') {
+      const needsSsl = isProduction || isRemoteDb;
       this.pool = new Pool({
         connectionString: configOrUrl,
         max: 5,
@@ -71,11 +78,10 @@ export class PostgresStore {
       this.pool = configOrUrl.pool;
       this.onGameOver = configOrUrl.onGameOver;
     } else {
-      const isProduction = process.env.NODE_ENV === 'production';
       const needsSsl =
         configOrUrl.ssl !== undefined
           ? configOrUrl.ssl
-          : isProduction || (configOrUrl.connectionString && (configOrUrl.connectionString.includes('sslmode=require') || configOrUrl.connectionString.includes('render.com')));
+          : isProduction || isRemoteDb;
 
       this.pool = new Pool({
         connectionString: configOrUrl.connectionString,
@@ -83,6 +89,12 @@ export class PostgresStore {
         ssl: needsSsl ? (typeof needsSsl === 'object' ? needsSsl : { rejectUnauthorized: false }) : undefined
       });
       this.onGameOver = configOrUrl.onGameOver;
+    }
+
+    if (this.pool && typeof this.pool.on === 'function') {
+      this.pool.on('error', (err) => {
+        console.warn('[PostgresStore] Unexpected idle client error:', err.message || err);
+      });
     }
   }
 
