@@ -14,6 +14,8 @@ export interface CloverBoardViewProps {
   onPlaceSelectedCard: (slotIndex: number) => void;
   onRotateSlot: (slotIndex: number) => void;
   onRemoveFromSlot: (slotIndex: number) => void;
+  onRotateSecretSlot?: (slotIndex: number) => void;
+  allowSingleCardRotation?: boolean;
   readOnly?: boolean;
 }
 
@@ -26,11 +28,13 @@ export const CloverBoardView: React.FC<CloverBoardViewProps> = ({
   onPlaceSelectedCard,
   onRotateSlot,
   onRemoveFromSlot,
+  onRotateSecretSlot,
+  allowSingleCardRotation = false,
   readOnly = false
 }) => {
   const allCards: KeywordCard[] = [...board.secretCards, board.secretDistractor];
 
-  // In clue writing phase, we display the secret cards in their initial secret solution layout
+  // In clue writing phase, we display the secret cards in their secret solution layout
   const activeCards = isClueWritingPhase
     ? board.secretCards
     : board.currentSlots.map((slot) => {
@@ -46,6 +50,12 @@ export const CloverBoardView: React.FC<CloverBoardViewProps> = ({
   const keywordPairs = isClueWritingPhase
     ? getBoardKeywordPairs(board.secretCards, board.secretSolution)
     : null;
+
+  // Track which slot (if any) is currently rotated away from its initial deal orientation
+  const modifiedSlotIndex =
+    isClueWritingPhase && board.initialRotations?.length
+      ? board.secretSolution.findIndex((s, idx) => s.rotation !== board.initialRotations[idx])
+      : -1;
 
   return (
     <div className="clover-board-container" role="region" aria-label="Clover Board">
@@ -146,6 +156,12 @@ export const CloverBoardView: React.FC<CloverBoardViewProps> = ({
           const card = activeCards[slotIdx];
           const rotation = activeRotations[slotIdx];
           const isLocked = !isClueWritingPhase && board.lockedSlots[slotIdx];
+          const isSlotRotatedByHouseRule = isClueWritingPhase && modifiedSlotIndex === slotIdx;
+          const canRotateSecret =
+            isClueWritingPhase &&
+            allowSingleCardRotation &&
+            !readOnly &&
+            (modifiedSlotIndex === -1 || modifiedSlotIndex === slotIdx);
 
           return (
             <div
@@ -153,7 +169,8 @@ export const CloverBoardView: React.FC<CloverBoardViewProps> = ({
               className={clsx(
                 'clover-slot',
                 !card && 'empty',
-                isLocked && 'locked'
+                isLocked && 'locked',
+                isSlotRotatedByHouseRule && 'house-rule-rotated-slot'
               )}
               role={!isClueWritingPhase && !readOnly && !isLocked && selectedCardId ? 'button' : undefined}
               tabIndex={!isClueWritingPhase && !readOnly && !isLocked && selectedCardId ? 0 : undefined}
@@ -175,6 +192,37 @@ export const CloverBoardView: React.FC<CloverBoardViewProps> = ({
               {card ? (
                 <>
                   <KeywordCardView card={card} rotation={rotation} />
+
+                  {/* Clue Writing House Rule Single Card Rotation Overlay */}
+                  {isClueWritingPhase && allowSingleCardRotation && !readOnly && (
+                    <div className="slot-action-overlay clue-rotate-overlay">
+                      <button
+                        type="button"
+                        className={clsx('slot-action-btn', !canRotateSecret && 'btn-disabled')}
+                        aria-label={
+                          canRotateSecret
+                            ? `Rotate card in slot ${slotIdx + 1} (House Rule)`
+                            : 'Only 1 card slot can be rotated (House Rule)'
+                        }
+                        title={
+                          canRotateSecret
+                            ? 'Rotate 90° (House Rule)'
+                            : 'Only 1 card slot can be rotated under House Rule'
+                        }
+                        disabled={!canRotateSecret}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (canRotateSecret && onRotateSecretSlot) {
+                            onRotateSecretSlot(slotIdx);
+                          }
+                        }}
+                      >
+                        <RotateCw size={14} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Resolution Phase Slot Actions */}
                   {!isClueWritingPhase && !readOnly && !isLocked && (
                     <div className="slot-action-overlay">
                       <button
@@ -203,6 +251,8 @@ export const CloverBoardView: React.FC<CloverBoardViewProps> = ({
                       </button>
                     </div>
                   )}
+
+                  {/* Resolution Phase Verified Lock */}
                   {isLocked && (
                     <div className="slot-action-overlay">
                       <span className="slot-action-btn" title="Verified Correct" aria-label="Slot verified correct and locked">

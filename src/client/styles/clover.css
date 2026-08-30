@@ -24,9 +24,9 @@
   justify-content: space-between;
   background-color: var(--color-canvas-surface);
   border: 2px solid var(--color-border-contrast);
-  border-radius: var(--radius-lg);
-  padding: 0.75rem 1.15rem;
-  gap: 0.85rem;
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+  gap: 0.75rem;
   box-shadow: var(--shadow-crisp-sm);
 }
 
@@ -35,16 +35,16 @@
   align-items: center;
   gap: 0.65rem;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
 
 .phase-pill {
   background-color: var(--color-brand-primary);
   color: var(--color-ink-inverted);
-  padding: 0.25rem 0.65rem;
+  padding: 0.2rem 0.55rem;
   border: 1.5px solid var(--color-border-contrast);
-  border-radius: var(--radius-sm);
-  font-size: 0.78rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -54,8 +54,8 @@
 .game-stats {
   display: flex;
   align-items: center;
-  gap: 1.15rem;
-  font-size: 0.92rem;
+  gap: 1rem;
+  font-size: 0.9rem;
 }
 
 .stat-item {
@@ -68,7 +68,7 @@
 .stat-val {
   font-weight: 800;
   font-family: var(--font-family-display);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: var(--color-brand-primary);
 }
 
@@ -80,26 +80,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.35rem;
+  gap: 0.4rem;
+  padding: 0.3rem;
   background-color: var(--color-canvas-surface-subtle);
   border: 2px solid var(--color-border-contrast);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-crisp-sm);
   margin-bottom: 0.25rem;
 }
 
 .focus-tab-btn {
   flex: 1;
-  padding: 0.4rem 0.6rem;
-  font-size: 0.82rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.8rem;
   font-weight: 700;
   background-color: var(--color-canvas-surface);
   color: var(--color-ink-primary);
   border: 1.5px solid var(--color-border-contrast);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   box-shadow: 1.5px 1.5px 0px var(--color-border-contrast);
-  min-height: 40px;
+  min-height: 38px;
 }
 
 .focus-tab-btn.active {
@@ -115,7 +115,7 @@
 }
 
 /* ==========================================================================
-   Main Game Area & 3-Mode Viewports
+   Main Game Area & Responsive Viewports
    ========================================================================== */
 
 .game-main-area {
@@ -126,12 +126,14 @@
   width: 100%;
 }
 
-/* Desktop All-In-One Board View Mode */
+/* Desktop All-In-One Side-by-Side Board View */
 .game-main-area.desktop-board-view {
-  flex-direction: row;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
   justify-content: center;
-  gap: 2rem;
+  align-items: start;
+  gap: 1.5rem;
+  width: 100%;
 }
 
 .game-board-column {
@@ -139,19 +141,19 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 540px;
+  max-width: 520px;
 }
 
 .game-tray-column {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 520px;
+  max-width: 500px;
 }
 
 .desktop-board-view .game-tray-column {
   position: sticky;
-  top: 5rem;
+  top: 4.5rem;
 }
 
 /* 3-Mode Mobile Focus View Styles */
@@ -164,24 +166,25 @@
 }
 
 .focus-mode-cards .game-tray-column {
-  max-width: 650px;
+  max-width: 600px;
 }
 
 /* Clue writing rules banner */
 .clue-rules-banner {
   width: 100%;
-  margin-bottom: 1rem;
+  margin-bottom: 0.85rem;
   text-align: center;
   background-color: var(--color-brand-surface-light);
   border: 2px solid var(--color-border-contrast);
-  border-radius: var(--radius-lg);
-  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.95rem;
   box-shadow: var(--shadow-crisp-sm);
   font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .clue-actions-row {
-  margin-top: 1.25rem;
+  margin-top: 1.15rem;
   display: flex;
   gap: 0.75rem;
   align-items: center;
@@ -190,41 +193,41 @@
 }
 
 /* ==========================================================================
-   Tactile Clover Board (Physical Board-Game Texture & 135deg Light Angle)
+   Tactile Clover Board (Physical Board-Game Grid & 135deg Light Angle)
    ========================================================================== */
 
 .clover-board-container {
   position: relative;
   width: 100%;
-  max-width: 440px;
+  max-width: 430px;
   aspect-ratio: 1 / 1;
   background-color: var(--color-brand-primary);
-  border-radius: 36px;
+  border-radius: var(--radius-lg);
   padding: 2.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-crisp-lg);
-  border: 3px solid var(--color-border-contrast);
-  margin: 0.5rem 0;
+  border: 2.5px solid var(--color-border-contrast);
+  margin: 0.35rem 0;
   user-select: none;
 }
 
 /* 4 Clover Leaf Shapes */
 .clover-leaf-shape {
   position: absolute;
-  width: 52%;
-  height: 52%;
-  background-color: oklch(48% 0.17 142);
-  border-radius: 50%;
+  width: 50%;
+  height: 50%;
+  background-color: oklch(46% 0.16 142);
+  border-radius: var(--radius-md);
   z-index: 1;
-  border: 2px solid rgba(0, 0, 0, 0.15);
+  border: 1.5px solid rgba(0, 0, 0, 0.2);
 }
 
-.leaf-tl { top: 0; left: 0; }
-.leaf-tr { top: 0; right: 0; }
-.leaf-bl { bottom: 0; left: 0; }
-.leaf-br { bottom: 0; right: 0; }
+.leaf-tl { top: 4px; left: 4px; }
+.leaf-tr { top: 4px; right: 4px; }
+.leaf-bl { bottom: 4px; left: 4px; }
+.leaf-br { bottom: 4px; right: 4px; }
 
 /* 4 Clue Banners on Outer Edges (APCA Lc >= 75) */
 .clue-banner {
@@ -232,8 +235,8 @@
   z-index: 10;
   background-color: var(--color-canvas-surface);
   border: 2px solid var(--color-border-contrast);
-  border-radius: var(--radius-md);
-  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.75rem;
   box-shadow: var(--shadow-crisp-sm);
   display: flex;
   align-items: center;
@@ -248,32 +251,32 @@
   top: 0.35rem;
   left: 50%;
   transform: translateX(-50%);
-  min-width: 180px;
-  max-width: 240px;
+  min-width: 170px;
+  max-width: 230px;
 }
 
 .clue-banner-south {
   bottom: 0.35rem;
   left: 50%;
   transform: translateX(-50%);
-  min-width: 180px;
-  max-width: 240px;
+  min-width: 170px;
+  max-width: 230px;
 }
 
 .clue-banner-east {
   right: 0.35rem;
   top: 50%;
   transform: translateY(-50%) rotate(90deg);
-  min-width: 160px;
-  max-width: 220px;
+  min-width: 150px;
+  max-width: 210px;
 }
 
 .clue-banner-west {
   left: 0.35rem;
   top: 50%;
   transform: translateY(-50%) rotate(-90deg);
-  min-width: 160px;
-  max-width: 220px;
+  min-width: 150px;
+  max-width: 210px;
 }
 
 .clue-input-field {
@@ -283,7 +286,7 @@
   text-align: center;
   font-family: var(--font-family-display);
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   color: var(--color-brand-primary);
   outline: none;
   text-transform: uppercase;
@@ -291,12 +294,12 @@
 
 .clue-input-field::placeholder {
   color: var(--color-ink-muted);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .clue-text-display {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   text-transform: uppercase;
   color: var(--color-ink-primary);
   letter-spacing: 0.03em;
@@ -309,7 +312,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
-  gap: 0.6rem;
+  gap: 0.5rem;
   width: 100%;
   height: 100%;
 }
@@ -318,13 +321,13 @@
   position: relative;
   background-color: var(--color-canvas-surface);
   border: 2px dashed var(--color-border-contrast);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   transition: transform var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
-  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .clover-slot.empty:hover {
@@ -342,9 +345,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
   color: var(--color-ink-muted);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -357,7 +360,7 @@
   width: 100%;
   height: 100%;
   background-color: var(--color-canvas-surface);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -370,13 +373,13 @@
 
 .keyword-card.selected {
   border-color: var(--color-brand-accent);
-  box-shadow: 0 0 0 3px var(--color-brand-accent);
+  box-shadow: 0 0 0 2.5px var(--color-brand-accent);
   background-color: var(--color-brand-accent-light);
 }
 
 .keyword-card-center-hole {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   background-color: var(--color-canvas-surface-subtle);
   border-radius: var(--radius-xs);
   border: 1.5px solid var(--color-border-contrast);
@@ -385,7 +388,7 @@
   justify-content: center;
 }
 
-/* Discrete Rotation Utility Classes (Zero Inline Styles) */
+/* Discrete Rotation Utility Classes */
 .rot-0 { transform: rotate(0deg); }
 .rot-90 { transform: rotate(90deg); }
 .rot-180 { transform: rotate(180deg); }
@@ -396,7 +399,7 @@
   position: absolute;
   font-family: var(--font-family-display);
   font-weight: 800;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--color-ink-primary);
   white-space: nowrap;
   pointer-events: none;
@@ -404,25 +407,25 @@
 }
 
 .word-top {
-  top: 5px;
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .word-right {
-  right: 5px;
+  right: 4px;
   top: 50%;
   transform: translateY(-50%) rotate(90deg);
 }
 
 .word-bottom {
-  bottom: 5px;
+  bottom: 4px;
   left: 50%;
   transform: translateX(-50%) rotate(180deg);
 }
 
 .word-left {
-  left: 5px;
+  left: 4px;
   top: 50%;
   transform: translateY(-50%) rotate(-90deg);
 }
@@ -439,11 +442,11 @@
 
 .slot-action-btn {
   position: relative;
-  min-width: 32px;
-  min-height: 32px;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
+  min-width: 30px;
+  min-height: 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-xs);
   background-color: var(--color-border-contrast);
   color: var(--color-ink-inverted);
   border: 1px solid var(--color-border-contrast);
@@ -454,21 +457,27 @@
   box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.4);
 }
 
-.slot-action-btn::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 44px;
-  min-height: 44px;
-  width: 44px;
-  height: 44px;
+.slot-action-btn:hover:not(:disabled) {
+  background-color: var(--color-brand-primary);
+  transform: scale(1.06);
 }
 
-.slot-action-btn:hover {
-  background-color: var(--color-brand-primary);
-  transform: scale(1.08);
+.slot-action-btn:disabled,
+.slot-action-btn.btn-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background-color: var(--color-canvas-subtle);
+  color: var(--color-ink-muted);
+}
+
+.clover-slot.house-rule-rotated-slot {
+  border: 2.5px solid var(--color-brand-accent);
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.25);
+}
+
+.clue-rotate-overlay {
+  top: 4px;
+  right: 4px;
 }
 
 /* ==========================================================================
@@ -478,16 +487,16 @@
 .tray-card-container {
   background-color: var(--color-canvas-surface);
   border: 2px solid var(--color-border-contrast);
-  border-radius: var(--radius-lg);
-  padding: 1.15rem;
+  border-radius: var(--radius-md);
+  padding: 1rem;
   box-shadow: var(--shadow-crisp-md);
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.75rem;
 }
 
 .tray-title {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -496,20 +505,20 @@
 
 .pool-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
 }
 
 .pool-card-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .pool-card-box {
-  width: 125px;
-  height: 125px;
+  width: 118px;
+  height: 118px;
   position: relative;
   cursor: pointer;
 }
@@ -522,30 +531,17 @@
 }
 
 .mini-action-btn {
-  position: relative;
-  min-height: 36px;
-  padding: 0.3rem 0.65rem;
+  min-height: 34px;
+  padding: 0.25rem 0.55rem;
   background-color: var(--color-canvas-surface-subtle);
   border: 1.5px solid var(--color-border-contrast);
-  border-radius: var(--radius-sm);
-  font-size: 0.78rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.75rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  box-shadow: 1.5px 1.5px 0px var(--color-border-contrast);
-}
-
-.mini-action-btn::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 44px;
-  min-height: 44px;
-  width: 44px;
-  height: 44px;
+  box-shadow: 1px 1px 0px var(--color-border-contrast);
 }
 
 .mini-action-btn:hover {
@@ -559,12 +555,12 @@
 .consensus-panel {
   background-color: var(--color-canvas-surface);
   border: 2px solid var(--color-border-contrast);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
   box-shadow: var(--shadow-crisp-sm);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
   width: 100%;
 }
 
@@ -579,20 +575,20 @@
 .consensus-chips-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.4rem;
   align-items: center;
 }
 
 .consensus-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.65rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
+  gap: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.78rem;
   font-weight: 700;
   border: 1.5px solid var(--color-border-contrast);
-  box-shadow: 1.5px 1.5px 0px var(--color-border-contrast);
+  box-shadow: 1px 1px 0px var(--color-border-contrast);
 }
 
 .consensus-chip.ready {
@@ -609,17 +605,17 @@
   background-color: oklch(92% 0.12 85);
   color: var(--color-ink-primary);
   font-weight: 800;
-  font-size: 0.8rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.45rem;
   border: 1.5px solid var(--color-border-contrast);
-  border-radius: var(--radius-sm);
-  box-shadow: 1.5px 1.5px 0px var(--color-border-contrast);
+  border-radius: var(--radius-xs);
+  box-shadow: 1px 1px 0px var(--color-border-contrast);
 }
 
 .consensus-actions-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: 0.5rem;
   align-items: center;
   justify-content: space-between;
   margin-top: 0.25rem;
@@ -629,11 +625,11 @@
 .resolution-box {
   background-color: var(--color-canvas-surface);
   border: 2px solid var(--color-border-contrast);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
   width: 100%;
   box-shadow: var(--shadow-crisp-sm);
 }
@@ -647,9 +643,9 @@
 }
 
 .attempt-badge {
-  padding: 0.25rem 0.65rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.78rem;
   font-weight: 800;
   border: 1.5px solid var(--color-border-contrast);
   box-shadow: 1.5px 1.5px 0px var(--color-border-contrast);
@@ -666,24 +662,21 @@
 }
 
 .resolution-instruction-text {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   color: var(--color-ink-muted);
 }
 
 .board-actions-row {
-  margin-top: 1rem;
+  margin-top: 0.85rem;
   display: flex;
-  gap: 0.75rem;
+  gap: 0.65rem;
   align-items: center;
   justify-content: center;
   width: 100%;
   flex-wrap: wrap;
 }
 
-/* ==========================================================================
-   Safety-Gated Lead Guesser Overrule Modal
-   ========================================================================== */
-
+/* Safety-Gated Lead Guesser Overrule Modal */
 .overrule-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -691,25 +684,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 1000;
   padding: 1rem;
 }
 
 .overrule-modal-card {
   background-color: var(--color-canvas-surface);
-  border: 3px solid var(--color-border-contrast);
-  border-radius: var(--radius-xl);
-  padding: 1.75rem 1.5rem;
-  max-width: 480px;
+  border: 2.5px solid var(--color-border-contrast);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.25rem;
+  max-width: 460px;
   width: 100%;
   box-shadow: var(--shadow-crisp-lg);
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 1rem;
 }
 
 .overrule-modal-title {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   color: var(--color-brand-accent);
   display: flex;
   align-items: center;
@@ -719,29 +712,29 @@
 .overrule-modal-warning {
   background-color: var(--color-brand-accent-light);
   border: 1.5px solid var(--color-border-contrast);
-  border-radius: var(--radius-md);
-  padding: 0.85rem;
-  font-size: 0.88rem;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  font-size: 0.85rem;
   line-height: 1.4;
   color: var(--color-ink-primary);
 }
 
 .overrule-modal-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.65rem;
   justify-content: flex-end;
-  margin-top: 0.5rem;
+  margin-top: 0.4rem;
 }
 
 /* Spectator silent banner */
 .spectator-silent-banner {
   background-color: oklch(92% 0.08 85);
   border: 2px solid var(--color-border-contrast);
-  border-radius: var(--radius-md);
-  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
   text-align: center;
   font-weight: 700;
+  font-size: 0.88rem;
   box-shadow: var(--shadow-crisp-sm);
   color: var(--color-ink-primary);
 }
-

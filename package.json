@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "server": "tsx src/server/index.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "boardgame.io": "^0.50.2",
@@ -24,6 +25,7 @@
     "tsx": "^4.19.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/koa-send": "^4.1.6",
     "@types/koa-static": "^4.0.4",
     "@types/node": "^22.5.4",
