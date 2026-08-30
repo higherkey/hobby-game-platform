@@ -90,28 +90,38 @@ export class BaseRoom<G extends any = any> {
   }
 
   /**
-   * List available matches from lobby
+   * List available matches from lobby for specific game or platform games
    */
-  public async listRooms(): Promise<MatchInfo[]> {
+  public async listRooms(targetGameName?: string): Promise<MatchInfo[]> {
     if (!this.lobbyClient) return [];
     try {
-      this.logger.debug(`Fetching room list for game: ${this.gameName}`);
-      const response = await this.lobbyClient.listMatches(this.gameName);
-      const matches: MatchInfo[] = response.matches.map((m: any) => ({
-        matchID: m.matchID,
-        gameName: m.gameName,
-        players: m.players.map((p: any) => ({
-          id: String(p.id),
-          name: p.name,
-          isConnected: p.isConnected
-        })),
-        setupData: m.setupData,
-        createdAt: m.createdAt,
-        updatedAt: m.updatedAt,
-        gameover: m.gameover
-      }));
-      this.logger.debug(`Received ${matches.length} active room(s) from lobby`);
-      return matches;
+      const gamesToList = targetGameName
+        ? [targetGameName]
+        : [this.gameName, 'counter-example'];
+
+      const allMatches: MatchInfo[] = [];
+      for (const g of gamesToList) {
+        try {
+          const response = await this.lobbyClient.listMatches(g);
+          const matches: MatchInfo[] = response.matches.map((m: any) => ({
+            matchID: m.matchID,
+            gameName: m.gameName,
+            players: m.players.map((p: any) => ({
+              id: String(p.id),
+              name: p.name,
+              isConnected: p.isConnected
+            })),
+            setupData: m.setupData,
+            createdAt: m.createdAt,
+            updatedAt: m.updatedAt,
+            gameover: m.gameover
+          }));
+          allMatches.push(...matches);
+        } catch {
+          // ignore single game list errors
+        }
+      }
+      return allMatches;
     } catch (err) {
       this.logger.warn('Could not fetch rooms from lobby server', { error: String(err) });
       return [];
@@ -121,16 +131,17 @@ export class BaseRoom<G extends any = any> {
   /**
    * Create a new multiplayer room via Lobby API
    */
-  public async createRoom(numPlayers: number, setupData?: any): Promise<string> {
+  public async createRoom(numPlayers: number, setupData?: any, targetGameName?: string): Promise<string> {
     if (!this.lobbyClient) {
       throw new Error('Lobby client is not initialized in non-browser environment.');
     }
-    this.logger.info(`Creating room for ${numPlayers} players on ${this.serverUrl}...`);
-    const result = await this.lobbyClient.createMatch(this.gameName, {
+    const gName = targetGameName || this.gameName;
+    this.logger.info(`Creating room for ${numPlayers} players (${gName}) on ${this.serverUrl}...`);
+    const result = await this.lobbyClient.createMatch(gName, {
       numPlayers,
       setupData
     });
-    this.logger.info(`Room created successfully`, { matchID: result.matchID, numPlayers });
+    this.logger.info(`Room created successfully`, { matchID: result.matchID, numPlayers, gameName: gName });
     return result.matchID;
   }
 
@@ -141,12 +152,14 @@ export class BaseRoom<G extends any = any> {
   public async joinRoom(
     matchID: string,
     playerID: string,
-    playerName: string
+    playerName: string,
+    targetGameName?: string
   ): Promise<JoinedRoomSession> {
     if (!this.lobbyClient) {
       throw new Error('Lobby client is not initialized in non-browser environment.');
     }
 
+    const gName = targetGameName || this.gameName;
     const saved = this.getSavedSession(matchID);
     if (saved && saved.playerCredentials && (saved.playerID === playerID || playerID === undefined || playerID === null)) {
       this.logger.info(`Reusing saved credentials for room ${matchID}`, { playerID: saved.playerID, playerName });
@@ -154,8 +167,8 @@ export class BaseRoom<G extends any = any> {
     }
 
     try {
-      this.logger.info(`Sending join request for room ${matchID}`, { playerID, playerName });
-      const { playerCredentials } = await this.lobbyClient.joinMatch(this.gameName, matchID, {
+      this.logger.info(`Sending join request for room ${matchID} (${gName})`, { playerID, playerName });
+      const { playerCredentials } = await this.lobbyClient.joinMatch(gName, matchID, {
         playerID,
         playerName
       });
@@ -183,11 +196,11 @@ export class BaseRoom<G extends any = any> {
   /**
    * Leave a match and clear session.
    */
-  public async leaveRoom(matchID: string, playerID: string, credentials?: string): Promise<void> {
+  public async leaveRoom(matchID: string, playerID: string, credentials?: string, targetGameName?: string): Promise<void> {
     this.logger.info(`Leaving room ${matchID}`, { playerID });
     if (this.lobbyClient && credentials) {
       try {
-        await this.lobbyClient.leaveMatch(this.gameName, matchID, {
+        await this.lobbyClient.leaveMatch(targetGameName || this.gameName, matchID, {
           playerID,
           credentials
         });
@@ -207,8 +220,15 @@ export class BaseRoom<G extends any = any> {
     credentials?: string;
     multiplayerType?: 'socket' | 'local';
     debug?: boolean;
+    game?: Game | BaseGame<any, any>;
   }): GameClientType<G> {
-    const { matchID, playerID, credentials, multiplayerType = 'socket', debug = false } = options;
+    const { matchID, playerID, credentials, multiplayerType = 'socket', debug = false, game: customGame } = options;
+
+    const gameToUse = customGame
+      ? ('toBoardgameConfig' in customGame && typeof customGame.toBoardgameConfig === 'function'
+          ? customGame.toBoardgameConfig()
+          : (customGame as Game<any, any>))
+      : this.game;
 
     this.logger.info(`Creating game client for match ${matchID || 'default'}`, {
       playerID,
@@ -222,7 +242,7 @@ export class BaseRoom<G extends any = any> {
         : Local();
 
     const client = Client({
-      game: this.game,
+      game: gameToUse,
       matchID: matchID || 'default',
       playerID: playerID ?? undefined,
       credentials,

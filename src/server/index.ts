@@ -6,6 +6,7 @@ import { PostgresStore } from './db/PostgresStore';
 import { recordCompletedGame, getGameHistory } from './gameRecordsHook';
 import { registerAdminRoutes } from './adminRoutes';
 import { registerTelemetryRoutes, recordServerLog } from './telemetryRoutes';
+import { registerAuthRoutes } from './authRoutes';
 import send from 'koa-send';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -103,7 +104,7 @@ if (server.router) {
     }
   });
 
-  // Register Admin & Telemetry API routes
+  // Register Admin, Telemetry & Auth API routes
   registerAdminRoutes({
     router: server.router,
     db,
@@ -111,6 +112,7 @@ if (server.router) {
     serverTransport: transport
   });
   registerTelemetryRoutes(server.router);
+  registerAuthRoutes(server.router, db?.pool);
 
   // Direct router routes for production frontend
   const distPath = path.resolve(process.cwd(), 'dist');
@@ -134,6 +136,15 @@ if (server.router) {
       } else {
         ctx.status = 204;
       }
+    });
+
+    // SPA wildcard fallback for frontend routes (excluding /api and /games)
+    server.router.get('(.*)', async (ctx, next) => {
+      if (ctx.path.startsWith('/api') || ctx.path.startsWith('/games')) {
+        return next();
+      }
+      ctx.type = 'text/html; charset=utf-8';
+      ctx.body = fs.createReadStream(indexHtmlPath);
     });
   } else {
     console.log('[Server] No dist/ directory found. Static frontend serving is inactive.');
