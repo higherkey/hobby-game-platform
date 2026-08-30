@@ -14,6 +14,8 @@
 - [x] Deep linking into specific games via query hash (`#play?game=so-clover` or `#play`).
 - [x] Simulated 1-click magic link auto-login button in modal during development for instant testing without an SMTP server.
 - [x] Real-time live room filtering by game, open seats, and search query with 2.5s dynamic sync.
+- [x] Comprehensive Playwright End-to-End (E2E) test framework covering navigation, auth, live filters, and gameplay (`npm run test:e2e`).
+- [x] Configurable "House Rule" option for So Clover allowing a single card to be rotated during secret clue writing (with net-delta tracking, multi-player auth, and UI slot controls).
 
 ## 4. High-Complexity / Breaking Deferred Opportunities (4c)
 - Integration with external OAuth providers (Google / GitHub) or SMTP email gateways (Postmark / Resend) if needed in future production stages.

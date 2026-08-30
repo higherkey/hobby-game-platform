@@ -219,20 +219,40 @@ export class BaseRoom<G extends any = any> {
     playerID?: string | null;
     credentials?: string;
     multiplayerType?: 'socket' | 'local';
+    numPlayers?: number;
+    setupData?: any;
     debug?: boolean;
     game?: Game | BaseGame<any, any>;
   }): GameClientType<G> {
-    const { matchID, playerID, credentials, multiplayerType = 'socket', debug = false, game: customGame } = options;
+    const {
+      matchID,
+      playerID,
+      credentials,
+      multiplayerType = 'socket',
+      numPlayers,
+      setupData,
+      debug = false,
+      game: customGame
+    } = options;
 
-    const gameToUse = customGame
+    let baseGameConfig = customGame
       ? ('toBoardgameConfig' in customGame && typeof customGame.toBoardgameConfig === 'function'
           ? customGame.toBoardgameConfig()
           : (customGame as Game<any, any>))
       : this.game;
 
+    if (setupData && typeof baseGameConfig.setup === 'function') {
+      const origSetup = baseGameConfig.setup;
+      baseGameConfig = {
+        ...baseGameConfig,
+        setup: (ctx: any) => origSetup(ctx, setupData)
+      };
+    }
+
     this.logger.info(`Creating game client for match ${matchID || 'default'}`, {
       playerID,
       multiplayerType,
+      numPlayers,
       serverUrl: this.serverUrl
     });
 
@@ -242,10 +262,11 @@ export class BaseRoom<G extends any = any> {
         : Local();
 
     const client = Client({
-      game: gameToUse,
+      game: baseGameConfig,
       matchID: matchID || 'default',
       playerID: playerID ?? undefined,
       credentials,
+      numPlayers,
       multiplayer,
       debug
     }) as GameClientType<G>;

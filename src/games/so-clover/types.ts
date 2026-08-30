@@ -27,12 +27,17 @@ export interface TargetKeywordPair {
   cardIndex2: number;
 }
 
+export interface SoCloverGameOptions {
+  allowSingleCardRotation?: boolean; // House rule: allows rotating at most 1 card during clue writing
+}
+
 export interface PlayerBoard {
   playerId: string;
   playerName: string;
   // Original secret cards and rotations for slots 0, 1, 2, 3
   secretCards: KeywordCard[];
   secretSolution: PlacedCard[]; // Length 4: slot 0, 1, 2, 3
+  initialRotations: number[]; // Initial dealt rotations [s0, s1, s2, s3] for net-rotation delta tracking
   secretDistractor: KeywordCard; // 5th card added to pool
 
   // The 4 clues written by the player
@@ -63,6 +68,7 @@ export interface PlayerBoard {
 
 export interface SoCloverGameState {
   phase: 'clue_writing' | 'resolution' | 'game_over';
+  options: SoCloverGameOptions;
   players: Record<string, PlayerBoard>;
   playerOrder: string[];
   currentSpectatorIndex: number;

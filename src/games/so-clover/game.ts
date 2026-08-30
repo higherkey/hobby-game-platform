@@ -144,7 +144,14 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
   public minPlayers = 1;
   public maxPlayers = 6;
 
-  public setup(ctx: Ctx, setupData?: { playerNames?: Record<string, string>; customDeck?: KeywordCard[] }): SoCloverGameState {
+  public setup(
+    ctx: Ctx,
+    setupData?: {
+      playerNames?: Record<string, string>;
+      customDeck?: KeywordCard[];
+      options?: { allowSingleCardRotation?: boolean };
+    }
+  ): SoCloverGameState {
     const rawDeck = setupData?.customDeck || KEYWORD_DECK;
     const deck = shuffleWithCtx(rawDeck, ctx);
     const numPlayers = ctx.numPlayers || 1;
@@ -170,11 +177,14 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
         rotation: getRandomRotation(ctx, i * 4 + cardIdx)
       }));
 
+      const initialRotations = secretSolution.map((s) => s.rotation);
+
       players[pid] = {
         playerId: pid,
         playerName: setupData?.playerNames?.[pid] || `Player ${i + 1}`,
         secretCards,
         secretSolution,
+        initialRotations,
         secretDistractor: distractor,
         clues: {
           north: '',
@@ -195,6 +205,9 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
 
     return {
       phase: 'clue_writing',
+      options: {
+        allowSingleCardRotation: Boolean(setupData?.options?.allowSingleCardRotation)
+      },
       players,
       playerOrder,
       currentSpectatorIndex: 0,
@@ -208,6 +221,43 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
     // -------------------------------------------------------------
     // PHASE 1: CLUE WRITING
     // -------------------------------------------------------------
+    /**
+     * House Rule Move: Rotate a single secret card slot during clue writing.
+     * Enforces that at most 1 slot can be in a modified rotation state relative to initial deal.
+     */
+    rotateSecretSlotCard: (
+      { G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
+      targetPlayerId: string,
+      slotIndex: number
+    ) => {
+      if (G.phase !== 'clue_writing') return INVALID_MOVE;
+      if (!G.options?.allowSingleCardRotation) return INVALID_MOVE;
+
+      const pid = playerID !== undefined ? playerID : (targetPlayerId || '0');
+      // In online mode with playerID set, prevent modifying another player's board
+      if (playerID !== undefined && playerID !== targetPlayerId) {
+        return INVALID_MOVE;
+      }
+
+      const player = G.players[pid];
+      if (!player || player.cluesSubmitted) return INVALID_MOVE;
+      if (slotIndex < 0 || slotIndex > 3 || !Number.isInteger(slotIndex)) return INVALID_MOVE;
+
+      // Net-delta rotation check:
+      // A slot j is actively rotated if secretSolution[j].rotation !== initialRotations[j]
+      const modifiedSlotIndex = player.secretSolution.findIndex(
+        (s, idx) => s.rotation !== player.initialRotations[idx]
+      );
+
+      // If another slot is already rotated away from initial rotation, enforce single-card constraint
+      if (modifiedSlotIndex !== -1 && modifiedSlotIndex !== slotIndex) {
+        return INVALID_MOVE;
+      }
+
+      player.secretSolution[slotIndex].rotation =
+        (player.secretSolution[slotIndex].rotation + 1) % 4;
+    },
+
     submitClues: (
       { G, ctx, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
       playerId: string,
@@ -546,11 +596,12 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
         // Author or resolved board: full visibility
         sanitizedPlayers[pid] = board;
       } else {
-        // Non-owner during active gameplay: redact secret solution, secret cards, and distractor
+        // Non-owner during active gameplay: redact secret solution, secret cards, distractor, and initialRotations
         sanitizedPlayers[pid] = {
           ...board,
           secretCards: [],
           secretSolution: [],
+          initialRotations: [],
           secretDistractor: {
             id: '__hidden__',
             words: ['', '', '', '']

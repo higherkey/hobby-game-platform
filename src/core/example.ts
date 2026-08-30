@@ -89,6 +89,6 @@ export async function runExample() {
   client.stop();
 }
 
-if (typeof require !== 'undefined' && require.main === module) {
+if (typeof process !== 'undefined' && typeof window === 'undefined' && process.argv?.[1]?.includes('example')) {
   runExample().catch(console.error);
 }

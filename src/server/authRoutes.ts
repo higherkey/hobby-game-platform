@@ -73,7 +73,8 @@ function checkRateLimit(identifier: string): boolean {
     return true;
   }
 
-  if (record.count >= MAX_MAGIC_REQUESTS_PER_WINDOW) {
+  const maxAllowed = process.env.NODE_ENV === 'production' ? MAX_MAGIC_REQUESTS_PER_WINDOW : 100;
+  if (record.count >= maxAllowed) {
     return false;
   }
 
@@ -82,12 +83,36 @@ function checkRateLimit(identifier: string): boolean {
 }
 
 /**
+ * Safe JSON request body extractor for Koa contexts
+ */
+async function getRequestBody(ctx: any): Promise<any> {
+  if (ctx.request?.body && typeof ctx.request.body === 'object') {
+    return ctx.request.body;
+  }
+  if (!ctx.req) return {};
+  return new Promise((resolve) => {
+    let data = '';
+    ctx.req.on('data', (chunk: any) => {
+      data += chunk;
+    });
+    ctx.req.on('end', () => {
+      try {
+        resolve(data ? JSON.parse(data) : {});
+      } catch {
+        resolve({});
+      }
+    });
+    ctx.req.on('error', () => resolve({}));
+  });
+}
+
+/**
  * Register Magic Link and Auth routes on Koa router
  */
 export function registerAuthRoutes(router: Router<any, any>, _dbPool?: Pool): void {
   // 1. Request Magic Link
   router.post('/api/auth/magic-link', async (ctx) => {
-    const body = (ctx.request as any).body || {};
+    const body = await getRequestBody(ctx);
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const username = typeof body.username === 'string' ? body.username.trim().slice(0, 30) : '';
     const clientIp = ctx.ip || ctx.request.ip || '127.0.0.1';
@@ -140,7 +165,7 @@ export function registerAuthRoutes(router: Router<any, any>, _dbPool?: Pool): vo
 
   // 2. Verify Magic Link Token & Authenticate
   router.post('/api/auth/verify', async (ctx) => {
-    const body = (ctx.request as any).body || {};
+    const body = await getRequestBody(ctx);
     const token = typeof body.token === 'string' ? body.token.trim() : '';
 
     if (!token) {

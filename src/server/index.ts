@@ -7,7 +7,6 @@ import { recordCompletedGame, getGameHistory } from './gameRecordsHook';
 import { registerAdminRoutes } from './adminRoutes';
 import { registerTelemetryRoutes, recordServerLog } from './telemetryRoutes';
 import { registerAuthRoutes } from './authRoutes';
-import send from 'koa-send';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -126,21 +125,38 @@ if (server.router) {
     });
 
     server.router.get('/assets/(.*)', async (ctx) => {
-      await send(ctx, ctx.path, { root: distPath });
+      const assetSubpath = ctx.path.replace(/^\/assets\//, '');
+      const assetFilePath = path.join(distPath, 'assets', assetSubpath);
+      if (fs.existsSync(assetFilePath) && fs.statSync(assetFilePath).isFile()) {
+        if (assetSubpath.endsWith('.js')) {
+          ctx.type = 'application/javascript; charset=utf-8';
+        } else if (assetSubpath.endsWith('.css')) {
+          ctx.type = 'text/css; charset=utf-8';
+        }
+        ctx.body = fs.createReadStream(assetFilePath);
+      } else {
+        ctx.status = 404;
+      }
     });
 
     server.router.get('/favicon.ico', async (ctx) => {
       const fav = path.join(distPath, 'favicon.ico');
       if (fs.existsSync(fav)) {
-        await send(ctx, 'favicon.ico', { root: distPath });
+        ctx.type = 'image/x-icon';
+        ctx.body = fs.createReadStream(fav);
       } else {
         ctx.status = 204;
       }
     });
 
-    // SPA wildcard fallback for frontend routes (excluding /api and /games)
+    // SPA wildcard fallback for frontend routes (excluding /api, /games, /assets, /favicon.ico)
     server.router.get('(.*)', async (ctx, next) => {
-      if (ctx.path.startsWith('/api') || ctx.path.startsWith('/games')) {
+      if (
+        ctx.path.startsWith('/api') ||
+        ctx.path.startsWith('/games') ||
+        ctx.path.startsWith('/assets') ||
+        ctx.path.startsWith('/favicon')
+      ) {
         return next();
       }
       ctx.type = 'text/html; charset=utf-8';

@@ -21,7 +21,12 @@ const logger = createLogger('PlayPage');
 export interface PlayPageProps {
   roomManager: BaseRoom;
   currentUser: UserSession;
-  onStartLocalGame: (gameName: string, numPlayers: number, playerName: string) => void;
+  onStartLocalGame: (
+    gameName: string,
+    numPlayers: number,
+    playerName: string,
+    options?: { allowSingleCardRotation?: boolean }
+  ) => void;
   onJoinOnlineMatch: (matchID: string, playerID: string, playerName: string, gameName?: string) => Promise<void> | void;
   initialGameFilter?: string;
 }
@@ -43,16 +48,19 @@ export const PlayPage: React.FC<PlayPageProps> = ({
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const [joiningMatchId, setJoiningMatchId] = useState<string | null>(null);
 
-  // Modals state
+  // Host modal state
   const [showHostModal, setShowHostModal] = useState(false);
   const [hostGameName, setHostGameName] = useState('so-clover');
   const [hostNumPlayers, setHostNumPlayers] = useState(4);
+  const [hostAllowCardRotation, setHostAllowCardRotation] = useState(false);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
 
+  // Local Pass & Play modal state
   const [showLocalModal, setShowLocalModal] = useState(false);
   const [localGameName, setLocalGameName] = useState('so-clover');
   const [localNumPlayers, setLocalNumPlayers] = useState(2);
   const [localPlayerName, setLocalPlayerName] = useState(currentUser.username || 'Player 1');
+  const [localAllowCardRotation, setLocalAllowCardRotation] = useState(false);
 
   // Sync user name changes
   useEffect(() => {
@@ -123,7 +131,12 @@ export const PlayPage: React.FC<PlayPageProps> = ({
 
     setIsCreatingRoom(true);
     try {
-      const matchID = await roomManager.createRoom(hostNumPlayers, undefined, hostGameName);
+      const setupData =
+        hostGameName === 'so-clover'
+          ? { options: { allowSingleCardRotation: hostAllowCardRotation } }
+          : undefined;
+
+      const matchID = await roomManager.createRoom(hostNumPlayers, setupData, hostGameName);
       setShowHostModal(false);
       setJoiningMatchId(matchID);
       await onJoinOnlineMatch(matchID, '0', trimmedName, hostGameName);
@@ -154,7 +167,12 @@ export const PlayPage: React.FC<PlayPageProps> = ({
   const handleLaunchLocal = (e: React.FormEvent) => {
     e.preventDefault();
     setShowLocalModal(false);
-    onStartLocalGame(localGameName, localNumPlayers, localPlayerName.trim() || 'Player 1');
+    onStartLocalGame(
+      localGameName,
+      localNumPlayers,
+      localPlayerName.trim() || 'Player 1',
+      localGameName === 'so-clover' ? { allowSingleCardRotation: localAllowCardRotation } : undefined
+    );
   };
 
   // Pre-compute saved sessions
@@ -604,6 +622,23 @@ export const PlayPage: React.FC<PlayPageProps> = ({
               </select>
             </div>
 
+            {hostGameName === 'so-clover' && (
+              <div className="form-group checkbox-group">
+                <label className="checkbox-label" htmlFor="host-house-rule-rotate">
+                  <input
+                    type="checkbox"
+                    id="host-house-rule-rotate"
+                    className="form-checkbox"
+                    checked={hostAllowCardRotation}
+                    onChange={(e) => setHostAllowCardRotation(e.target.checked)}
+                  />
+                  <span className="checkbox-text">
+                    <strong>House Rule:</strong> Allow rotating 1 card during clue writing
+                  </span>
+                </label>
+              </div>
+            )}
+
             <div className="form-group">
               <span className="form-hint">
                 Hosting as <strong>{currentUser.username}</strong>. A match room will be created and you will occupy Seat 1.
@@ -699,6 +734,23 @@ export const PlayPage: React.FC<PlayPageProps> = ({
                   <option value={6}>6 Players</option>
                 </select>
               </div>
+
+              {localGameName === 'so-clover' && (
+                <div className="form-group checkbox-group">
+                  <label className="checkbox-label" htmlFor="local-house-rule-rotate">
+                    <input
+                      type="checkbox"
+                      id="local-house-rule-rotate"
+                      className="form-checkbox"
+                      checked={localAllowCardRotation}
+                      onChange={(e) => setLocalAllowCardRotation(e.target.checked)}
+                    />
+                    <span className="checkbox-text">
+                      <strong>House Rule:</strong> Allow rotating 1 card during clue writing
+                    </span>
+                  </label>
+                </div>
+              )}
 
               <div className="modal-actions-row">
                 <button

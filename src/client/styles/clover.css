@@ -457,9 +457,27 @@
   box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.4);
 }
 
-.slot-action-btn:hover {
+.slot-action-btn:hover:not(:disabled) {
   background-color: var(--color-brand-primary);
   transform: scale(1.06);
+}
+
+.slot-action-btn:disabled,
+.slot-action-btn.btn-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background-color: var(--color-canvas-subtle);
+  color: var(--color-ink-muted);
+}
+
+.clover-slot.house-rule-rotated-slot {
+  border: 2.5px solid var(--color-brand-accent);
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.25);
+}
+
+.clue-rotate-overlay {
+  top: 4px;
+  right: 4px;
 }
 
 /* ==========================================================================

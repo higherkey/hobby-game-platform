@@ -114,8 +114,13 @@ export const App: React.FC = () => {
   const [selectedPoolCardId, setSelectedPoolCardId] = useState<string | null>(null);
   const [clueDrafts, setClueDrafts] = useState<Record<string, { north: string; east: string; south: string; west: string }>>({});
 
-  const handleStartLocalGame = useCallback((gameName: string, numPlayers: number, _playerName: string) => {
-    logger.info(`Starting local game "${gameName}" with ${numPlayers} player(s)`);
+  const handleStartLocalGame = useCallback((
+    gameName: string,
+    numPlayers: number,
+    _playerName: string,
+    options?: { allowSingleCardRotation?: boolean }
+  ) => {
+    logger.info(`Starting local game "${gameName}" with ${numPlayers} player(s)`, { options });
     unsubscribeRef.current?.();
 
     setCurrentGameName(gameName);
@@ -125,7 +130,11 @@ export const App: React.FC = () => {
       matchID: `local-${Date.now()}`,
       playerID: '0',
       multiplayerType: 'local',
-      game: gameToPlay
+      game: gameToPlay,
+      setupData: {
+        numPlayers,
+        options: options || { allowSingleCardRotation: false }
+      }
     });
 
     client.start();
@@ -267,6 +276,14 @@ export const App: React.FC = () => {
       }
     }));
   };
+
+  const handleRotateSecretSlot = useCallback(
+    (slotIdx: number) => {
+      if (!clientInstance) return;
+      clientInstance.moves.rotateSecretSlotCard(localActivePlayerId, slotIdx);
+    },
+    [clientInstance, localActivePlayerId]
+  );
 
   const handleSubmitClues = () => {
     if (!clientInstance || !gameState) return;
@@ -582,7 +599,14 @@ export const App: React.FC = () => {
                 <div className="clue-rules-banner">
                   <p>
                     <strong>Secret Setup:</strong> Write 1 single-word clue for each outer pair of
-                    keywords. When ready, click Submit.
+                    keywords.
+                    {cloverG.options?.allowSingleCardRotation && (
+                      <span>
+                        {' '}
+                        <strong>[House Rule Active]:</strong> You may rotate 1 card on your board to adjust your keyword pairs.
+                      </span>
+                    )}{' '}
+                    When ready, click Submit.
                   </p>
                 </div>
 
@@ -595,6 +619,8 @@ export const App: React.FC = () => {
                   onPlaceSelectedCard={() => {}}
                   onRotateSlot={() => {}}
                   onRemoveFromSlot={() => {}}
+                  onRotateSecretSlot={handleRotateSecretSlot}
+                  allowSingleCardRotation={Boolean(cloverG.options?.allowSingleCardRotation)}
                   readOnly={activeBoard.cluesSubmitted}
                 />
 
