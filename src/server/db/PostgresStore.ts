@@ -51,8 +51,13 @@ export interface PostgresStoreConfig {
 export class PostgresStore {
   public readonly pool: pg.Pool;
   public readonly onGameOver?: (matchID: string, gameName: string, state: State, metadata?: Server.MatchData) => Promise<void> | void;
+  public readonly schema: string;
 
   constructor(configOrUrl: string | PostgresStoreConfig) {
+    const rawSchema = process.env.DB_SCHEMA || 'public';
+    // Validate schema name to alphanumeric/underscore to prevent injection
+    this.schema = /^[a-zA-Z0-9_]+$/.test(rawSchema) ? rawSchema : 'public';
+
     if (typeof configOrUrl === 'string') {
       const isProduction = process.env.NODE_ENV === 'production';
       const needsSsl = isProduction || configOrUrl.includes('sslmode=require') || configOrUrl.includes('render.com');
@@ -86,11 +91,15 @@ export class PostgresStore {
   }
 
   /**
-   * Connect to Postgres and run idempotent schema migrations
+   * Connect to Postgres and run idempotent schema migrations within the configured schema
    */
   public async connect(): Promise<void> {
     const client = await this.pool.connect();
     try {
+      if (this.schema !== 'public') {
+        await client.query(`CREATE SCHEMA IF NOT EXISTS "${this.schema}";`);
+      }
+      await client.query(`SET search_path TO "${this.schema}", public;`);
       await client.query(`
         CREATE TABLE IF NOT EXISTS bgio_matches (
           id VARCHAR(255) PRIMARY KEY,
