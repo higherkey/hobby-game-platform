@@ -92,6 +92,12 @@ export class PostgresStore {
     }
 
     if (this.pool && typeof this.pool.on === 'function') {
+      this.pool.on('connect', (client: any) => {
+        client.query(`SET search_path TO "${this.schema}", public;`).catch((err: any) => {
+          console.warn('[PostgresStore] Failed to set search_path on new client:', err.message || err);
+        });
+      });
+
       this.pool.on('error', (err) => {
         console.warn('[PostgresStore] Unexpected idle client error:', err.message || err);
       });
