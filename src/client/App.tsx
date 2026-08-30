@@ -12,6 +12,7 @@ import { CloverBoardView } from './components/CloverBoardView';
 import { CounterBoardView } from './components/CounterBoardView';
 import { CardTray } from './components/CardTray';
 import { ScoreView } from './components/ScoreView';
+import { RoomSettingsModal } from './components/RoomSettingsModal';
 import { authStore, type UserSession } from './auth/authStore';
 import {
   LogOut,
@@ -28,7 +29,8 @@ import {
   CheckCircle2,
   Crown,
   ArrowRight,
-  Dices
+  Dices,
+  Settings
 } from 'lucide-react';
 import { createLogger, StructuredLogger } from '../core/Logger';
 
@@ -113,6 +115,7 @@ export const App: React.FC = () => {
   const [localActivePlayerId, setLocalActivePlayerId] = useState('0');
   const [selectedPoolCardId, setSelectedPoolCardId] = useState<string | null>(null);
   const [clueDrafts, setClueDrafts] = useState<Record<string, { north: string; east: string; south: string; west: string }>>({});
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const handleStartLocalGame = useCallback((
     gameName: string,
@@ -492,6 +495,16 @@ export const App: React.FC = () => {
               )}
             </button>
 
+            {/* Room Settings Button */}
+            <button
+              type="button"
+              className="btn-secondary room-settings-trigger-btn"
+              onClick={() => setShowSettingsModal(true)}
+              title="Room Settings & House Rules"
+            >
+              <Settings size={15} /> Settings
+            </button>
+
             <button
               type="button"
               className="btn-secondary"
@@ -502,6 +515,22 @@ export const App: React.FC = () => {
             </button>
           </div>
         </header>
+
+        {/* Room Settings Modal */}
+        <RoomSettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          gameName={currentGameName}
+          matchID={activeSession?.matchID || 'local-match'}
+          isHost={!activeSession || activeSession.playerID === '0'}
+          phase={cloverG.phase}
+          currentOptions={cloverG.options || {}}
+          onSaveOptions={(updatedOptions) => {
+            if (clientInstance?.moves?.updateGameOptions) {
+              clientInstance.moves.updateGameOptions(updatedOptions);
+            }
+          }}
+        />
 
         {/* Main Game Shell */}
         <div className="game-shell">

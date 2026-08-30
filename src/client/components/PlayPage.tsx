@@ -14,6 +14,7 @@ import {
   Clock,
   X
 } from 'lucide-react';
+import { GameRoomSettings } from './GameRoomSettings';
 import { createLogger } from '../../core/Logger';
 
 const logger = createLogger('PlayPage');
@@ -623,20 +624,12 @@ export const PlayPage: React.FC<PlayPageProps> = ({
             </div>
 
             {hostGameName === 'so-clover' && (
-              <div className="form-group checkbox-group">
-                <label className="checkbox-label" htmlFor="host-house-rule-rotate">
-                  <input
-                    type="checkbox"
-                    id="host-house-rule-rotate"
-                    className="form-checkbox"
-                    checked={hostAllowCardRotation}
-                    onChange={(e) => setHostAllowCardRotation(e.target.checked)}
-                  />
-                  <span className="checkbox-text">
-                    <strong>House Rule:</strong> Allow rotating 1 card during clue writing
-                  </span>
-                </label>
-              </div>
+              <GameRoomSettings
+                gameName={hostGameName}
+                options={{ allowSingleCardRotation: hostAllowCardRotation }}
+                onOptionsChange={(opts) => setHostAllowCardRotation(Boolean(opts.allowSingleCardRotation))}
+                isHost={true}
+              />
             )}
 
             <div className="form-group">
@@ -736,20 +729,12 @@ export const PlayPage: React.FC<PlayPageProps> = ({
               </div>
 
               {localGameName === 'so-clover' && (
-                <div className="form-group checkbox-group">
-                  <label className="checkbox-label" htmlFor="local-house-rule-rotate">
-                    <input
-                      type="checkbox"
-                      id="local-house-rule-rotate"
-                      className="form-checkbox"
-                      checked={localAllowCardRotation}
-                      onChange={(e) => setLocalAllowCardRotation(e.target.checked)}
-                    />
-                    <span className="checkbox-text">
-                      <strong>House Rule:</strong> Allow rotating 1 card during clue writing
-                    </span>
-                  </label>
-                </div>
+                <GameRoomSettings
+                  gameName={localGameName}
+                  options={{ allowSingleCardRotation: localAllowCardRotation }}
+                  onOptionsChange={(opts) => setLocalAllowCardRotation(Boolean(opts.allowSingleCardRotation))}
+                  isHost={true}
+                />
               )}
 
               <div className="modal-actions-row">

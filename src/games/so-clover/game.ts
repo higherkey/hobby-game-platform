@@ -258,6 +258,41 @@ export class SoCloverGame extends BaseGame<SoCloverGameState> {
         (player.secretSolution[slotIndex].rotation + 1) % 4;
     },
 
+    /**
+     * Room Settings Move: Updates game room options/house rules dynamically.
+     * Allowed during clue_writing phase before resolution locks in.
+     */
+    updateGameOptions: (
+      { G, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
+      newOptions: { allowSingleCardRotation?: boolean }
+    ) => {
+      if (G.phase !== 'clue_writing') return INVALID_MOVE;
+      // In online multiplayer with playerID set, enforce host authorization (Seat 0)
+      if (playerID !== undefined && playerID !== '0') {
+        return INVALID_MOVE;
+      }
+
+      const prevAllowRotation = G.options?.allowSingleCardRotation;
+      const nextAllowRotation = Boolean(newOptions.allowSingleCardRotation);
+
+      G.options = {
+        ...G.options,
+        allowSingleCardRotation: nextAllowRotation
+      };
+
+      // If single card rotation was turned OFF, restore any rotated cards back to initial deal rotations
+      if (prevAllowRotation && !nextAllowRotation) {
+        for (const pid of G.playerOrder) {
+          const player = G.players[pid];
+          if (player && player.secretSolution && player.initialRotations) {
+            player.secretSolution.forEach((s, idx) => {
+              s.rotation = player.initialRotations[idx];
+            });
+          }
+        }
+      }
+    },
+
     submitClues: (
       { G, ctx, playerID }: { G: SoCloverGameState; ctx: Ctx; playerID?: string },
       playerId: string,

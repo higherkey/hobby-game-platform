@@ -56,7 +56,7 @@ test.describe('Gameplay & Viewport Controls', () => {
     await expect(page.locator('.play-page-title')).toHaveText('Play & Browse Games');
   });
 
-  test('toggles So Clover House Rule (Rotate 1 Card) during secret clue writing', async ({ page }) => {
+  test('toggles So Clover House Rule (Rotate 1 Card) during secret clue writing and via in-game settings modal', async ({ page }) => {
     await page.goto('/#play');
 
     // 1. Open Pass & Play for So Clover
@@ -66,11 +66,11 @@ test.describe('Gameplay & Viewport Controls', () => {
     const localModal = page.locator('.modal-card', { hasText: 'Start Local Pass & Play' });
     await expect(localModal).toBeVisible();
 
-    // Check the House Rule checkbox
-    const houseRuleCheckbox = page.locator('#local-house-rule-rotate');
-    await expect(houseRuleCheckbox).toBeVisible();
-    await houseRuleCheckbox.check();
-    await expect(houseRuleCheckbox).toBeChecked();
+    // Check the House Rule switch inside componentized GameRoomSettings
+    const houseRuleToggle = page.locator('#setting-house-rule-rotate');
+    await expect(houseRuleToggle).toBeVisible();
+    await houseRuleToggle.check();
+    await expect(houseRuleToggle).toBeChecked();
 
     // Start local match
     await localModal.locator('button[type="submit"]', { hasText: /Start Game Now/i }).click();
@@ -90,17 +90,25 @@ test.describe('Gameplay & Viewport Controls', () => {
     const firstSlot = page.locator('.clover-slot').first();
     await expect(firstSlot).toHaveClass(/house-rule-rotated-slot/);
 
-    // Assert that the other slots' rotate buttons are now disabled (enforcing single card constraint)
-    const secondSlotBtn = rotateButtons.nth(1);
-    await expect(secondSlotBtn).toBeDisabled();
+    // 4. Open in-game Room Settings modal
+    const settingsBtn = page.locator('.room-settings-trigger-btn');
+    await expect(settingsBtn).toBeVisible();
+    await settingsBtn.click();
 
-    // Rotate slot 1 three more times (360 deg back to initial rotation) -> clears lock and unlocks all slots
-    await rotateButtons.first().click();
-    await rotateButtons.first().click();
-    await rotateButtons.first().click();
+    const settingsModal = page.locator('.room-settings-modal-card');
+    await expect(settingsModal).toBeVisible();
+    await expect(settingsModal.locator('#room-settings-title')).toHaveText('Room Settings');
 
+    // Toggle House Rule OFF in modal and apply
+    const inGameToggle = settingsModal.locator('#setting-house-rule-rotate');
+    await inGameToggle.uncheck();
+    await settingsModal.locator('button', { hasText: 'Apply Settings' }).click();
+    await expect(settingsModal).toBeHidden();
+
+    // Verify House Rule is now disabled and slot rotation reset
+    await expect(rulesBanner).not.toContainText('House Rule Active');
+    await expect(rotateButtons).toHaveCount(0);
     await expect(firstSlot).not.toHaveClass(/house-rule-rotated-slot/);
-    await expect(secondSlotBtn).toBeEnabled();
 
     // Exit match
     await page.locator('header.app-header button', { hasText: /Exit/i }).click();

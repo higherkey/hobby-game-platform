@@ -376,5 +376,32 @@ describe('So Clover Game Engine', () => {
       const res = game.moves.rotateSecretSlotCard({ G, ctx, playerID: '0' }, '1', 0);
       expect(res).toBe(INVALID_MOVE);
     });
+
+    it('allows updating game room options dynamically during clue writing and handles disable resets', () => {
+      const game = new SoCloverGame();
+      const ctx = { numPlayers: 2, currentPlayer: '0', turn: 1 } as unknown as Ctx;
+      const G = game.setup(ctx); // Starts with allowSingleCardRotation = false
+
+      expect(G.options.allowSingleCardRotation).toBe(false);
+
+      // Non-host (Player 1) tries to update options -> REJECTED
+      const nonHostRes = game.moves.updateGameOptions({ G, ctx, playerID: '1' }, { allowSingleCardRotation: true });
+      expect(nonHostRes).toBe(INVALID_MOVE);
+
+      // Host (Player 0) updates options to true -> SUCCEEDS
+      const hostRes = game.moves.updateGameOptions({ G, ctx, playerID: '0' }, { allowSingleCardRotation: true });
+      expect(hostRes).not.toBe(INVALID_MOVE);
+      expect(G.options.allowSingleCardRotation).toBe(true);
+
+      // Player 0 rotates slot 0
+      const initRot = G.players['0'].secretSolution[0].rotation;
+      game.moves.rotateSecretSlotCard({ G, ctx, playerID: '0' }, '0', 0);
+      expect(G.players['0'].secretSolution[0].rotation).toBe((initRot + 1) % 4);
+
+      // Host turns off single card rotation -> slot 0 resets back to initial deal rotation
+      game.moves.updateGameOptions({ G, ctx, playerID: '0' }, { allowSingleCardRotation: false });
+      expect(G.options.allowSingleCardRotation).toBe(false);
+      expect(G.players['0'].secretSolution[0].rotation).toBe(G.players['0'].initialRotations[0]);
+    });
   });
 });
