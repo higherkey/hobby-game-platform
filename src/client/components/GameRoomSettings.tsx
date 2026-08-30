@@ -1,5 +1,6 @@
 import React from 'react';
 import { SlidersHorizontal, Sparkles, HelpCircle, Check, Info } from 'lucide-react';
+import { ToggleSwitch } from './common/ToggleSwitch';
 
 export interface GameRoomSettingsProps {
   gameName: string;
@@ -77,16 +78,12 @@ export const GameRoomSettings: React.FC<GameRoomSettingsProps> = ({
                   {allowSingleCardRotation ? 'Enabled' : 'Disabled'}
                 </span>
               ) : (
-                <label className="toggle-switch" htmlFor="setting-house-rule-rotate">
-                  <input
-                    type="checkbox"
-                    id="setting-house-rule-rotate"
-                    checked={allowSingleCardRotation}
-                    onChange={(e) => handleToggleSingleCardRotation(e.target.checked)}
-                    aria-label="Toggle Single Card Rotation House Rule"
-                  />
-                  <span className="toggle-slider" />
-                </label>
+                <ToggleSwitch
+                  id="setting-house-rule-rotate"
+                  checked={allowSingleCardRotation}
+                  onChange={handleToggleSingleCardRotation}
+                  ariaLabel="Toggle Single Card Rotation House Rule"
+                />
               )}
             </div>
           </div>

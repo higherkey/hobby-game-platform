@@ -13,13 +13,14 @@ import { CounterBoardView } from './components/CounterBoardView';
 import { CardTray } from './components/CardTray';
 import { ScoreView } from './components/ScoreView';
 import { RoomSettingsModal } from './components/RoomSettingsModal';
+import { MatchHeader } from './components/MatchHeader';
+import { ModalDialog } from './components/common/ModalDialog';
+import { HotseatSelector } from './components/common/HotseatSelector';
 import { authStore, type UserSession } from './auth/authStore';
 import {
   LogOut,
   Eye,
   Users,
-  Smartphone,
-  Monitor,
   RefreshCw,
   AlertTriangle,
   Sparkles,
@@ -29,8 +30,7 @@ import {
   CheckCircle2,
   Crown,
   ArrowRight,
-  Dices,
-  Settings
+  Dices
 } from 'lucide-react';
 import { createLogger, StructuredLogger } from '../core/Logger';
 
@@ -384,28 +384,12 @@ export const App: React.FC = () => {
       const counterG = G as CounterGameState;
       return (
         <div className="app-container">
-          <header className="app-header">
-            <div className="header-brand-group">
-              <div className="header-brand-logo">
-                <Dices size={20} />
-              </div>
-              <div className="header-brand-text">
-                <span className="header-brand-title">HobbyBoard</span>
-                <span className="header-brand-tagline">⚡ Counter Duel (Turn {ctx?.turn || 1})</span>
-              </div>
-            </div>
-
-            <div className="header-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={handleLeaveGame}
-                title="Exit Match"
-              >
-                <LogOut size={15} /> Exit Match
-              </button>
-            </div>
-          </header>
+          <MatchHeader
+            gameTitle="Counter Duel"
+            gameTagline={`⚡ Counter Duel (Turn ${ctx?.turn || 1})`}
+            showViewToggle={false}
+            onLeaveGame={handleLeaveGame}
+          />
 
           <div className="play-page-container">
             <CounterBoardView
@@ -464,57 +448,14 @@ export const App: React.FC = () => {
     return (
       <div className="app-container">
         {/* Match Header */}
-        <header className="app-header">
-          <div className="header-brand-group">
-            <div className="header-brand-logo">
-              <Dices size={20} />
-            </div>
-            <div className="header-brand-text">
-              <span className="header-brand-title">HobbyBoard</span>
-              <span className="header-brand-tagline">🍀 So Clover!</span>
-            </div>
-          </div>
-
-          <div className="header-actions">
-            {/* View Switcher: Desktop Side-by-Side vs Mobile Stacked */}
-            <button
-              type="button"
-              className={`view-toggle-btn ${isDesktopView ? 'active' : ''}`}
-              onClick={() => setIsDesktopView(!isDesktopView)}
-              title={isDesktopView ? 'Switch to Stacked View' : 'Switch to Side-by-Side Desktop View'}
-              aria-pressed={isDesktopView}
-            >
-              {isDesktopView ? (
-                <>
-                  <Monitor size={15} /> Side-by-Side
-                </>
-              ) : (
-                <>
-                  <Smartphone size={15} /> Stacked View
-                </>
-              )}
-            </button>
-
-            {/* Room Settings Button */}
-            <button
-              type="button"
-              className="btn-secondary room-settings-trigger-btn"
-              onClick={() => setShowSettingsModal(true)}
-              title="Room Settings & House Rules"
-            >
-              <Settings size={15} /> Settings
-            </button>
-
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={handleLeaveGame}
-              title="Exit Match"
-            >
-              <LogOut size={15} /> Exit
-            </button>
-          </div>
-        </header>
+        <MatchHeader
+          gameTitle="So Clover!"
+          gameTagline="🍀 So Clover!"
+          isDesktopView={isDesktopView}
+          onToggleDesktopView={() => setIsDesktopView(!isDesktopView)}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          onLeaveGame={handleLeaveGame}
+        />
 
         {/* Room Settings Modal */}
         <RoomSettingsModal
@@ -561,19 +502,12 @@ export const App: React.FC = () => {
               {/* Hotseat Switcher for single device local multiplayer */}
               {activeSession === null && cloverG.playerOrder.length > 1 && (
                 <div className="stat-item">
-                  <Users size={14} />
-                  <select
-                    value={localActivePlayerId}
-                    onChange={(e) => setLocalActivePlayerId(e.target.value)}
-                    className="form-input"
-                    aria-label="Change active seat"
-                  >
-                    {cloverG.playerOrder.map((pid) => (
-                      <option key={pid} value={pid}>
-                        Seat: {cloverG.players[pid].playerName}
-                      </option>
-                    ))}
-                  </select>
+                  <HotseatSelector
+                    playerOrder={cloverG.playerOrder}
+                    players={cloverG.players}
+                    activePlayerId={localActivePlayerId}
+                    onSelectPlayer={setLocalActivePlayerId}
+                  />
                 </div>
               )}
             </div>
@@ -878,46 +812,44 @@ export const App: React.FC = () => {
         </div>
 
         {/* Lead Guesser Overrule Modal */}
-        {showOverruleModal && (
-          <div className="overrule-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="overrule-modal-title">
-            <div className="overrule-modal-card">
-              <h3 id="overrule-modal-title" className="overrule-modal-title">
-                <AlertTriangle size={20} /> Invoke Lead Guesser Overrule
-              </h3>
-
-              <div className="overrule-modal-warning">
-                <p>
-                  <strong>As Lead Guesser</strong>, you hold executive authority to submit the active clover arrangement without unanimous votes.
-                </p>
-                <p>
-                  Use this to resolve deadlocks while respecting team collaboration.
-                </p>
-              </div>
-
-              <div className="overrule-modal-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setShowOverruleModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn-destructive"
-                  onClick={() => {
-                    if (clientInstance) {
-                      clientInstance.moves.submitGuess(true);
-                    }
-                    setShowOverruleModal(false);
-                  }}
-                >
-                  Confirm & Submit Overrule
-                </button>
-              </div>
-            </div>
+        <ModalDialog
+          isOpen={showOverruleModal}
+          onClose={() => setShowOverruleModal(false)}
+          title="Invoke Lead Guesser Overrule"
+          icon={<AlertTriangle size={18} />}
+          actions={
+            <>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowOverruleModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-destructive"
+                onClick={() => {
+                  if (clientInstance) {
+                    clientInstance.moves.submitGuess(true);
+                  }
+                  setShowOverruleModal(false);
+                }}
+              >
+                Confirm & Submit Overrule
+              </button>
+            </>
+          }
+        >
+          <div className="overrule-modal-warning">
+            <p>
+              <strong>As Lead Guesser</strong>, you hold executive authority to submit the active clover arrangement without unanimous votes.
+            </p>
+            <p>
+              Use this to resolve deadlocks while respecting team collaboration.
+            </p>
           </div>
-        )}
+        </ModalDialog>
       </div>
     );
   }
