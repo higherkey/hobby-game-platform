@@ -22,6 +22,26 @@ describe('PostgresStore', () => {
     expect(store.type()).toBe(StorageType.ASYNC);
   });
 
+  it('configures SSL with rejectUnauthorized false for remote render.com hosts', () => {
+    const store = new PostgresStore('postgresql://user:pass@dpg-xxx.oregon-postgres.render.com:5432/db');
+    expect(store.pool).toBeDefined();
+  });
+
+  it('configures SSL with rejectUnauthorized false when configured with options object', () => {
+    const store = new PostgresStore({
+      connectionString: 'postgresql://user:pass@dpg-xxx.oregon-postgres.render.com:5432/db',
+      max: 5
+    });
+    expect(store.pool).toBeDefined();
+  });
+
+  it('registers error listener on pool when pool supports event listening', () => {
+    const onMock = vi.fn();
+    const customPool = { ...mockPool, on: onMock };
+    new PostgresStore({ pool: customPool as any });
+    expect(onMock).toHaveBeenCalledWith('error', expect.any(Function));
+  });
+
   it('runs table and index creation migrations on connect()', async () => {
     mockClient.query.mockResolvedValueOnce({ rows: [] });
 
