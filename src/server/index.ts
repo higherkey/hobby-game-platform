@@ -5,6 +5,7 @@ import { CounterGame } from '../core/example';
 import { PostgresStore } from './db/PostgresStore';
 import { recordCompletedGame, getGameHistory } from './gameRecordsHook';
 import { registerAdminRoutes } from './adminRoutes';
+import { registerTelemetryRoutes, recordServerLog } from './telemetryRoutes';
 import send from 'koa-send';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -16,7 +17,7 @@ const counterGame = new CounterGame();
 
 const allowedOrigins: (string | RegExp | boolean)[] = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim())
-  : ['*', Origins.LOCALHOST, Origins.LOCALHOST_IN_DEVELOPMENT, /\.vercel\.app$/];
+  : ['*', Origins.LOCALHOST, Origins.LOCALHOST_IN_DEVELOPMENT];
 
 let db: PostgresStore | undefined;
 
@@ -41,6 +42,24 @@ const { server, transport, normalizedGames, run } = BaseServer.createServer([clo
   origins: allowedOrigins,
   db
 });
+
+// Request tracing middleware
+if (server.app) {
+  server.app.use(async (ctx, next) => {
+    const start = Date.now();
+    await next();
+    const duration = Date.now() - start;
+    if (ctx.path.startsWith('/api') || ctx.path.startsWith('/games') || ctx.path.startsWith('/health')) {
+      const msg = `${ctx.method} ${ctx.path} -> ${ctx.status} (${duration}ms)`;
+      recordServerLog(ctx.status >= 400 ? 'WARN' : 'INFO', 'HTTP', msg, {
+        method: ctx.method,
+        path: ctx.path,
+        status: ctx.status,
+        durationMs: duration
+      });
+    }
+  });
+}
 
 // Register history API endpoint
 if (server.router) {
@@ -84,13 +103,14 @@ if (server.router) {
     }
   });
 
-  // Register Admin API routes
+  // Register Admin & Telemetry API routes
   registerAdminRoutes({
     router: server.router,
     db,
     games: normalizedGames,
     serverTransport: transport
   });
+  registerTelemetryRoutes(server.router);
 
   // Direct router routes for production frontend
   const distPath = path.resolve(process.cwd(), 'dist');
@@ -161,4 +181,32 @@ const shutdown = async () => {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-run();
+async function startServer() {
+  if (db) {
+    const maxRetries = 3;
+    let connected = false;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[Server] Running database migrations (attempt ${attempt}/${maxRetries})...`);
+        await db.connect();
+        console.log('[Server] Database connected and schema ready.');
+        connected = true;
+        break;
+      } catch (err) {
+        console.error(`[Server] Database connection attempt ${attempt} failed:`, err);
+        if (attempt < maxRetries) {
+          console.log('[Server] Retrying database connection in 1.5s...');
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+    }
+
+    if (!connected) {
+      console.warn('[Server] Starting server without database connection. Fallback in-memory behavior will be used.');
+    }
+  }
+  run();
+}
+
+startServer();

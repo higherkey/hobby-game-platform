@@ -13,7 +13,7 @@ export const ScoreView: React.FC<ScoreViewProps> = ({ G, onPlayAgain }) => {
 
   return (
     <div className="gameover-overlay">
-      <Trophy size={48} color="#2e7d32" />
+      <Trophy size={48} className="trophy-icon" />
       <h2>Game Complete!</h2>
 
       <div className="score-display-huge">

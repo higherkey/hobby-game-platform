@@ -1,44 +1,74 @@
+/* ==========================================================================
+   So Clover! Universal AI Design System (v2) - Base & Global Tokens
+   ========================================================================== */
+
 :root {
-  --bg-main: #f4f8f3;
-  --bg-surface: #ffffff;
-  --bg-card: #ffffff;
-  --bg-clover: #2e7d32;
-  --bg-clover-leaf: #388e3c;
-  --bg-clover-slot: #e8f5e9;
-  --bg-clover-slot-hover: #c8e6c9;
-  --bg-accent: #1b5e20;
-  --bg-accent-light: #e8f5e9;
-  --bg-warning: #fff3e0;
-  --bg-error: #ffebee;
+  /* OKLCH Base Canvas & Surface Tokens */
+  --color-canvas-base: oklch(97.5% 0.012 95);
+  --color-canvas-surface: oklch(99.5% 0.005 95);
+  --color-canvas-surface-subtle: oklch(94.5% 0.015 95);
+  --color-canvas-surface-elevated: oklch(100% 0 0);
 
-  --text-main: #1f2937;
-  --text-muted: #4b5563;
-  --text-inverted: #ffffff;
-  --text-accent: #1b5e20;
-  --text-error: #b71c1c;
-  --text-warning: #b45309;
+  /* OKLCH Inks (APCA Lc >= 75 for body, Lc >= 60 for subheadings) */
+  --color-ink-primary: oklch(18% 0.025 240);
+  --color-ink-muted: oklch(42% 0.035 240);
+  --color-ink-inverted: oklch(99.5% 0.005 95);
+  --color-ink-accent: oklch(38% 0.16 142);
 
-  --border-subtle: #d1d5db;
-  --border-strong: #9ca3af;
-  --border-accent: #2e7d32;
-  --border-clover: #1b5e20;
+  /* OKLCH Brand Emerald Tokens (Calibrated for WCAG AA >= 5.2:1 with white text) */
+  --color-brand-primary: oklch(42% 0.16 142);
+  --color-brand-primary-hover: oklch(34% 0.16 142);
+  --color-brand-primary-active: oklch(30% 0.16 142);
+  --color-brand-surface-light: oklch(94% 0.035 142);
+  --color-brand-surface-medium: oklch(88% 0.06 142);
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-clover: 0 12px 24px -4px rgba(27, 94, 32, 0.25);
+  /* OKLCH Brand Focus & Amber Accent Tokens */
+  --color-brand-accent: oklch(56% 0.20 38);
+  --color-brand-accent-hover: oklch(48% 0.20 38);
+  --color-brand-accent-light: oklch(95% 0.04 80);
 
-  --font-family-display: 'Fredoka', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-family-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Status Colors */
+  --color-status-success: oklch(45% 0.17 145);
+  --color-status-warning: oklch(50% 0.16 75);
+  --color-status-error: oklch(48% 0.22 25);
+  --color-status-info: oklch(46% 0.18 240);
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
+  /* Subtle and High-Contrast Borders */
+  --color-border-subtle: oklch(86% 0.018 95);
+  --color-border-strong: oklch(65% 0.03 95);
+  --color-border-contrast: oklch(18% 0.025 240);
+  --color-border-emerald: oklch(38% 0.16 142);
+  --color-border-accent: oklch(56% 0.20 38);
 
-  --transition-speed: 0.2s;
+  /* Zero-Blur Tactile Hard Offset Shadows (Consistent 135deg top-left light source) */
+  --shadow-crisp-sm: 2px 2px 0px var(--color-border-contrast);
+  --shadow-crisp-md: 3px 3px 0px var(--color-border-contrast);
+  --shadow-crisp-lg: 5px 5px 0px var(--color-border-contrast);
+  --shadow-crisp-hover: 4px 4px 0px var(--color-border-contrast);
+
+  /* Tactile Radii Scale (Banishing pill buttons border-radius: 9999px) */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Typographic Stacks */
+  --font-family-display: 'Fredoka', 'Comfortaa', 'Quicksand', 'Segoe UI Rounded', 'Arial Rounded MT Bold', system-ui, -apple-system, sans-serif;
+  --font-family-body: 'Outfit', 'Plus Jakarta Sans', 'Lexend', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Compositor Bézier Timing Curves */
+  --ease-out: cubic-bezier(0, 0, 0.32, 1);
+  --ease-tactile: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 100ms;
+  --duration-normal: 180ms;
+  --duration-slow: 280ms;
 }
+
+/* ==========================================================================
+   Base Resets & Butterick's Line-Length Constraints
+   ========================================================================== */
 
 * {
   box-sizing: border-box;
@@ -49,181 +79,308 @@
 
 body {
   font-family: var(--font-family-body);
-  background-color: var(--bg-main);
-  color: var(--text-main);
-  line-height: 1.5;
+  background-color: var(--color-canvas-base);
+  color: var(--color-ink-primary);
+  line-height: 1.42;
+  font-size: clamp(0.95rem, 0.9rem + 0.2vw, 1.05rem);
   min-height: 100dvh;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Butterick's Rule: Lock paragraph measure to 45-75ch */
+p, .prose-measure {
+  max-inline-size: 65ch;
+}
+
+p + p {
+  margin-block-start: 1.15em;
 }
 
 h1, h2, h3, h4, .brand-title {
   font-family: var(--font-family-display);
-  color: var(--text-main);
-  font-weight: 600;
+  color: var(--color-ink-primary);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
 }
+
+h1 {
+  font-size: clamp(1.6rem, 1.25rem + 1.5vw, 2.5rem);
+}
+
+h2 {
+  font-size: clamp(1.3rem, 1.1rem + 1.0vw, 2.0rem);
+}
+
+h3 {
+  font-size: clamp(1.1rem, 0.95rem + 0.6vw, 1.4rem);
+}
+
+/* Number display with tabular numerals */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Screen reader utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==========================================================================
+   Button System (Tactile Zero-Blur Physical Buttons)
+   ========================================================================== */
 
 button {
-  font-family: inherit;
+  font-family: var(--font-family-body);
   cursor: pointer;
-  border: none;
+  border: 2px solid var(--color-border-contrast);
   background: none;
-  transition: all var(--transition-speed) ease;
   min-height: 44px;
   min-width: 44px;
+  padding: 0.55rem 1.15rem;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.92rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-crisp-sm);
+  transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
-/* Keyboard accessibility outline */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 [tabindex="0"]:focus-visible {
-  outline: 2px solid var(--border-clover);
+  outline: 3px solid var(--color-brand-accent);
   outline-offset: 2px;
 }
 
-input, select {
-  font-family: inherit;
-  font-size: 1rem;
-  min-height: 44px;
+button:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-crisp-hover);
 }
+
+button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px var(--color-border-contrast);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 1px 1px 0px var(--color-border-contrast);
+}
+
+.btn-primary {
+  background-color: var(--color-brand-primary);
+  color: var(--color-ink-inverted);
+  border-color: var(--color-border-contrast);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-brand-primary-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background-color: var(--color-brand-primary-active);
+}
+
+.btn-accent {
+  background-color: var(--color-brand-accent);
+  color: var(--color-ink-inverted);
+  border-color: var(--color-border-contrast);
+}
+
+.btn-accent:hover:not(:disabled) {
+  background-color: var(--color-brand-accent-hover);
+}
+
+.btn-secondary {
+  background-color: var(--color-canvas-surface-subtle);
+  color: var(--color-ink-primary);
+  border-color: var(--color-border-contrast);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-border-subtle);
+}
+
+.btn-outline {
+  background-color: var(--color-canvas-surface);
+  color: var(--color-ink-primary);
+  border: 2px solid var(--color-border-contrast);
+}
+
+.btn-destructive {
+  background-color: var(--color-status-error);
+  color: var(--color-ink-inverted);
+  border-color: var(--color-border-contrast);
+}
+
+/* ==========================================================================
+   Badges & Indicators (Zero-Blur Tactile Chips)
+   ========================================================================== */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1.5px solid var(--color-border-contrast);
+  box-shadow: 1.5px 1.5px 0px var(--color-border-contrast);
+  line-height: 1.2;
+}
+
+.badge-green {
+  background-color: var(--color-brand-surface-light);
+  color: var(--color-ink-primary);
+}
+
+.badge-yellow {
+  background-color: var(--color-brand-accent-light);
+  color: var(--color-ink-primary);
+}
+
+.badge-red {
+  background-color: oklch(92% 0.05 25);
+  color: var(--color-status-error);
+}
+
+.badge-spectator {
+  background-color: oklch(90% 0.08 85);
+  color: var(--color-ink-primary);
+}
+
+.badge-lead {
+  background-color: oklch(92% 0.12 85);
+  color: var(--color-ink-primary);
+  font-weight: 800;
+}
+
+/* ==========================================================================
+   Application Header & Navigation
+   ========================================================================== */
 
 .app-container {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+  background-color: var(--color-canvas-base);
 }
 
 .app-header {
-  background-color: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
-  padding: 0.75rem 1rem;
+  background-color: var(--color-canvas-surface);
+  border-bottom: 2px solid var(--color-border-contrast);
+  padding: 0.65rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: sticky;
   top: 0;
   z-index: 50;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-crisp-sm);
 }
 
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .header-logo {
-  width: 36px;
-  height: 36px;
-  background-color: var(--bg-clover);
-  color: var(--text-inverted);
+  width: 38px;
+  height: 38px;
+  background-color: var(--color-brand-primary);
+  color: var(--color-ink-inverted);
+  border: 2px solid var(--color-border-contrast);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 800;
   font-family: var(--font-family-display);
   font-size: 1.25rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 2px 2px 0px var(--color-border-contrast);
 }
 
 .header-title {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  color: var(--text-accent);
+  color: var(--color-ink-primary);
+  font-family: var(--font-family-display);
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
+}
+
+.header-clearance-exit {
+  margin-left: 1.5rem;
 }
 
 .view-toggle-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.5rem 0.85rem;
-  background-color: var(--bg-accent-light);
-  color: var(--text-accent);
-  border: 1px solid var(--border-accent);
-  border-radius: var(--radius-full);
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.view-toggle-btn:hover {
-  background-color: #dcf2dd;
+  padding: 0.45rem 0.85rem;
+  background-color: var(--color-canvas-surface-subtle);
+  color: var(--color-ink-primary);
+  border: 2px solid var(--color-border-contrast);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: 2px 2px 0px var(--color-border-contrast);
 }
 
 .view-toggle-btn.active {
-  background-color: var(--bg-accent);
-  color: var(--text-inverted);
+  background-color: var(--color-brand-primary);
+  color: var(--color-ink-inverted);
 }
 
-.btn-primary {
-  background-color: var(--bg-clover);
-  color: var(--text-inverted);
-  padding: 0.6rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  display: inline-flex;
+/* Loading state card */
+.loading-card {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background-color: var(--color-canvas-surface);
+  border: 2px solid var(--color-border-contrast);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-crisp-md);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  box-shadow: var(--shadow-sm);
+  gap: 1rem;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--bg-accent);
-  transform: translateY(-1px);
+.loading-spinner {
+  color: var(--color-brand-primary);
+  animation: spin 1s linear infinite;
 }
 
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.loading-desc {
+  color: var(--color-ink-muted);
+  max-width: 40ch;
 }
 
-.btn-secondary {
-  background-color: #e5e7eb;
-  color: var(--text-main);
-  padding: 0.6rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: #d1d5db;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.65rem;
-  border-radius: var(--radius-full);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.badge-green {
-  background-color: var(--bg-accent-light);
-  color: var(--text-accent);
-}
-
-.badge-yellow {
-  background-color: var(--bg-warning);
-  color: var(--text-warning);
-}
-
-.badge-red {
-  background-color: var(--bg-error);
-  color: var(--text-error);
-}
-
+/* Animations */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -240,5 +397,8 @@ input, select {
 @media (prefers-reduced-motion: reduce) {
   .spin-animation {
     animation: none;
+  }
+  button {
+    transition: none;
   }
 }

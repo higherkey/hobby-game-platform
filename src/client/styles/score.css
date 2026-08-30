@@ -1,31 +1,88 @@
 /* ==========================================================================
-   Score Breakdown & GameOver Utilities
+   So Clover! Universal AI Design System (v2) - Score & Game Over Styling
    ========================================================================== */
+
+.gameover-overlay {
+  background-color: var(--color-canvas-surface);
+  border: 3px solid var(--color-border-contrast);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.5rem, 1rem + 1.5vw, 2.5rem);
+  text-align: center;
+  max-width: 620px;
+  margin: 1.5rem auto;
+  box-shadow: var(--shadow-crisp-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.trophy-icon {
+  color: var(--color-brand-primary);
+  filter: drop-shadow(2px 2px 0px var(--color-border-contrast));
+}
+
+.score-display-huge {
+  font-size: clamp(3rem, 2.5rem + 2vw, 4.5rem);
+  font-weight: 800;
+  color: var(--color-brand-primary);
+  font-family: var(--font-family-display);
+  line-height: 1;
+}
 
 .score-subtext {
   font-size: 1.5rem;
-  color: var(--text-muted);
+  color: var(--color-ink-muted);
+}
+
+.legend-badge {
+  background-color: var(--color-brand-surface-light);
+  color: var(--color-ink-primary);
+  padding: 0.5rem 1.5rem;
+  border: 2px solid var(--color-border-contrast);
+  border-radius: var(--radius-md);
+  font-size: 1.2rem;
+  font-weight: 800;
+  font-family: var(--font-family-display);
+  box-shadow: var(--shadow-crisp-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .legend-description {
-  color: #4b5563;
-  max-width: 400px;
+  color: var(--color-ink-primary);
+  max-width: 45ch;
   margin: 0 auto;
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 
 .score-breakdown-card {
   width: 100%;
   text-align: left;
+  background-color: var(--color-canvas-surface-subtle);
+  border: 2px solid var(--color-border-contrast);
+  border-radius: var(--radius-lg);
+  padding: 1.15rem;
+  box-shadow: var(--shadow-crisp-sm);
 }
 
 .score-breakdown-title {
   margin-bottom: 0.75rem;
+  font-size: 1.05rem;
 }
 
 .score-breakdown-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 0.6rem 0;
+  border-bottom: 1.5px solid var(--color-border-subtle);
 }
+
+.score-breakdown-row:last-child {
+  border-bottom: none;
+}
+
